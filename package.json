@@ -1,0 +1,35 @@
+{
+  "private": true,
+  "name": "balancer-exchange-proxy",
+  "version": "0.0.7",
+  "license": "GPL-3.0-only",
+  "description": "SOR exchange proxy",
+  "scripts": {
+    "compile": "truffle compile",
+    "testrpc": "ganache-cli --gasLimit 10000000 --allowUnlimitedContractSize",
+    "test": "truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/balancer-labs/exchange-proxy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/balancer-labs/exchange-proxy/issues"
+  },
+  "homepage": "https://github.com/balancer-labs/exchange-proxy#readme",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "coveralls": "^3.0.7",
+    "ganache-core": "^2.6.1",
+    "mocha": "^6.2.0",
+    "solidity-coverage": "^0.6.7",
+    "standard": "^14.0.2",
+    "truffle": "^5.0.41",
+    "web3": "^1.2.0"
+  },
+  "dependencies": {
+    "ganache-cli": "^6.7.0",
+    "global": "^4.4.0",
+    "truffle-assertions": "^0.9.1"
+  }
+}
