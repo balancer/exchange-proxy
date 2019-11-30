@@ -72,20 +72,20 @@ contract ExchangeProxy {
         Swap[] memory swaps,
         address tokenIn,
         address tokenOut,
-        uint totalMaxAmountIn,
-        uint totalAmountOut
+        uint totalAmountOut,
+        uint maxTotalAmountIn  
     )
         public
         returns (uint totalAmountIn)
     {
         TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
-        TI.transferFrom(msg.sender, address(this), totalMaxAmountIn);
+        TI.transferFrom(msg.sender, address(this), maxTotalAmountIn);
         totalAmountIn = 0;
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
-            if (TI.allowance(address(this), swap.pool) < totalMaxAmountIn) {
+            if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
             (uint tokenAmountIn, uint spotPriceTarget) = pool.swap_ExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);

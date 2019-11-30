@@ -146,7 +146,7 @@ contract('ExchangeProxy', async (accounts) => {
           MAX
         ]
       ]
-      await proxy.batchSwapExactOut(swaps, WETH, DAI, toWei('7'), toWei('700'), { from: nonAdmin });
+      await proxy.batchSwapExactOut(swaps, WETH, DAI, toWei('700'), toWei('7'), { from: nonAdmin });
       let aBalanceEth = await pool_a.getBalance(WETH);
       let aBalanceDai = await pool_a.getBalance(DAI);
 
