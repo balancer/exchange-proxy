@@ -1,4 +1,4 @@
-pragma solidity ^0.5.11;
+pragma solidity 0.5.11;
 pragma experimental ABIEncoderV2;
 
 
@@ -6,8 +6,8 @@ pragma experimental ABIEncoderV2;
 // This contract is under development and tokens can easily get stuck forever
 
 contract PoolInterface {
-    function swap_ExactAmountIn(address, uint, address, uint, uint) external returns (uint, uint);
-    function swap_ExactAmountOut(address, uint, address, uint, uint) external returns (uint, uint);
+    function swapExactAmountIn(address, uint, address, uint, uint) external returns (uint, uint);
+    function swapExactAmountOut(address, uint, address, uint, uint) external returns (uint, uint);
 }
 
 contract TokenInterface {
@@ -59,7 +59,7 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountOut, uint spotPriceTarget) = pool.swap_ExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountOut, uint spotPriceTarget) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         TO.transfer(msg.sender, totalAmountOut);
@@ -88,7 +88,7 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountIn, uint spotPriceTarget) = pool.swap_ExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountIn, uint spotPriceTarget) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         TO.transfer(msg.sender, totalAmountOut);
