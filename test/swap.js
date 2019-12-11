@@ -7,7 +7,7 @@ const Decimal = require('decimal.js');
 const errorDelta = 10 ** -8;
 const verbose = process.env.VERBOSE;
 
-Decimal.set({ precision: 18, rounding: Decimal.ROUND_HALF_CEIL }) 
+Decimal.set({ precision: 18 }) 
 
 function calcRelativeDiff(_expected, _actual) {
     return Math.abs((_expected - _actual) / _expected);
@@ -21,6 +21,15 @@ function calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWei
   let bar = Decimal(1).minus(foo);
   let tokenAmountOut = Decimal(tokenBalanceOut).times(bar);
   return tokenAmountOut;
+}
+
+function calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut, swapFee) {
+  let weightRatio = Decimal(tokenWeightOut).div(Decimal(tokenWeightIn));
+  let diff = Decimal(tokenBalanceOut).minus(tokenAmountOut);
+  let y = Decimal(tokenBalanceOut).div(diff);
+  let foo = y.pow(weightRatio).minus(Decimal(1));
+  let tokenAmountIn = (Decimal(tokenBalanceIn).times(foo)).div(Decimal(1).minus(Decimal(swapFee)));
+  return tokenAmountIn;
 }
 
 contract('ExchangeProxy', async (accounts) => {
@@ -109,7 +118,7 @@ contract('ExchangeProxy', async (accounts) => {
 
     })
 
-    it('batchSwapExactIn', async () => {
+    it('batchSwapExactIn dry', async () => {
       let swaps = [
         [ 
           POOL_A,        
@@ -130,15 +139,12 @@ contract('ExchangeProxy', async (accounts) => {
           MAX
         ]
       ]
+      const swapFee = fromWei(await pool_a.getSwapFee());
       let totalAmountOut = await proxy.batchSwapExactIn.call(swaps, WETH, DAI, toWei('2'), toWei('0'), { from: nonAdmin });
 
-      let pool_a_out = calcOutGivenIn(6, 5, 1200, 5, 0.5, 0);
-      let pool_b_out = calcOutGivenIn(2, 10, 800, 20, 0.5, 0);
-      let pool_c_out = calcOutGivenIn(15, 5, 2500, 5, 1, 0);
-
-      console.log(pool_a_out)
-      console.log(pool_b_out)
-      console.log(pool_c_out)
+      let pool_a_out = calcOutGivenIn(6, 5, 1200, 5, 0.5, swapFee);
+      let pool_b_out = calcOutGivenIn(2, 10, 800, 20, 0.5, swapFee);
+      let pool_c_out = calcOutGivenIn(15, 5, 2500, 5, 1, swapFee);
 
       let expectedTotalOut = pool_a_out.plus(pool_b_out).plus(pool_c_out);
 
@@ -150,13 +156,11 @@ contract('ExchangeProxy', async (accounts) => {
           console.log(`relDif  : ${relDif})`);
       }
 
-      assert.isAtMost(relDif, (errorDelta * 3));
+      assert.isAtMost(relDif, (errorDelta * swaps.length));
 
-      await proxy.batchSwapExactIn(swaps, WETH, DAI, toWei('2'), toWei('0'), { from: nonAdmin });
-      
     });
 
-    it('batchSwapExactOut', async () => {
+    it('batchSwapExactOut dry', async () => {
       let swaps = [
         [ 
           POOL_A,        
@@ -177,7 +181,25 @@ contract('ExchangeProxy', async (accounts) => {
           MAX
         ]
       ]
-      await proxy.batchSwapExactOut(swaps, WETH, DAI, toWei('700'), toWei('7'), { from: nonAdmin });
+
+      const swapFee = fromWei(await pool_a.getSwapFee());
+      let totalAmountIn = await proxy.batchSwapExactOut.call(swaps, WETH, DAI, toWei('700'), toWei('7'), { from: nonAdmin });
+
+      let pool_a_in = calcInGivenOut(6, 5, 1200, 5, 100, swapFee);
+      let pool_b_in = calcInGivenOut(2, 10, 800, 20, 100, swapFee);
+      let pool_c_in = calcInGivenOut(15, 5, 2500, 5, 500, swapFee);
+
+      let expectedTotalIn = pool_a_in.plus(pool_b_in).plus(pool_c_in);
+
+      let relDif = calcRelativeDiff(expectedTotalIn, fromWei(totalAmountIn));
+      if (verbose) {
+          console.log('Pool Balance');
+          console.log(`expected: ${expectedTotalIn})`);
+          console.log(`actual  : ${fromWei(totalAmountIn)})`);
+          console.log(`relDif  : ${relDif})`);
+      }
+
+      assert.isAtMost(relDif, (errorDelta * swaps.length));
       
     });
 
