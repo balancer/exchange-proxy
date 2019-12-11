@@ -1,4 +1,4 @@
-pragma solidity 0.5.11;
+pragma solidity 0.5.12;
 pragma experimental ABIEncoderV2;
 
 
@@ -29,6 +29,26 @@ contract ExchangeProxy {
         uint    maxPrice;
     }
 
+    event LOG_CALL(
+        bytes4  indexed sig,
+        address indexed caller,
+        bytes           data
+    ) anonymous;
+
+    modifier _logs_() {
+        emit LOG_CALL(msg.sig, msg.sender, msg.data);
+        _;
+    }
+
+    modifier _lock_() {
+        require(!_mutex, "ERR_REENTRY");
+        _mutex = true;
+        _;
+        _mutex = false;
+    }
+
+    bool private _mutex;
+
     function add(uint a, uint b) internal pure returns (uint) {
         uint c = a + b;
         require(c >= a, "ERR_ADD_OVERFLOW");
@@ -46,12 +66,13 @@ contract ExchangeProxy {
         uint minTotalAmountOut
     )   
         public
+        _logs_
+        _lock_
         returns (uint totalAmountOut)
     {
         TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
         TI.transferFrom(msg.sender, address(this), totalAmountIn);
-        totalAmountOut = 0;
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             
@@ -73,15 +94,16 @@ contract ExchangeProxy {
         address tokenIn,
         address tokenOut,
         uint totalAmountOut,
-        uint maxTotalAmountIn  
+        uint maxTotalAmountIn
     )
         public
+        _logs_
+        _lock_
         returns (uint totalAmountIn)
     {
         TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
         TI.transferFrom(msg.sender, address(this), maxTotalAmountIn);
-        totalAmountIn = 0;
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
@@ -96,9 +118,123 @@ contract ExchangeProxy {
         return totalAmountIn;
     }
 
-    // TODO
-    function batchEthInSwapExactIn () public payable {}
-    function batchEthOutSwapExactIn () public {}
-    function batchEthInSwapExactOut () public payable {}
-    function batchEthOutSwapExactOut () public {}
+    function batchEthInSwapExactIn(
+        Swap[] memory swaps,
+        address tokenIn,
+        address tokenOut,
+        uint totalAmountIn,
+        uint minTotalAmountOut
+    )
+        public payable
+        _logs_
+        _lock_
+        returns (uint totalAmountOut)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        TokenInterface TO = TokenInterface(tokenOut);
+        TI.deposit.value(msg.value)();
+        for (uint i = 0; i < swaps.length; i++) {
+            Swap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountOut, uint spotPriceTarget) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            totalAmountOut = add(tokenAmountOut, totalAmountOut);
+        }
+        TO.transfer(msg.sender, totalAmountOut);
+        return totalAmountOut;
+    }
+
+    function batchEthOutSwapExactIn(
+        Swap[] memory swaps,
+        address tokenIn,
+        address tokenOut,
+        uint totalAmountIn,
+        uint minTotalAmountOut
+    )
+        public
+        _logs_
+        _lock_
+        returns (uint totalAmountOut)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        TokenInterface TO = TokenInterface(tokenOut);
+        for (uint i = 0; i < swaps.length; i++) {
+            Swap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountOut, uint spotPriceTarget) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            totalAmountOut = add(tokenAmountOut, totalAmountOut);
+        }
+        TO.withdraw(totalAmountOut);
+        (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
+        require(xfer, "ERR_ETH_FAILED");
+        return totalAmountOut;
+    }
+
+    function batchEthInSwapExactOut(
+        Swap[] memory swaps,
+        address tokenIn,
+        address tokenOut,
+        uint totalAmountOut,
+        uint maxTotalAmountIn
+    )
+        public payable
+        _logs_
+        _lock_
+        returns (uint totalAmountIn)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        TokenInterface TO = TokenInterface(tokenOut);
+        TI.deposit.value(msg.value)();
+        for (uint i = 0; i < swaps.length; i++) {
+            Swap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountIn, uint spotPriceTarget) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            totalAmountIn = add(tokenAmountIn, totalAmountIn);
+        }
+        TO.transfer(msg.sender, totalAmountOut);
+        uint wethBalance = TI.balanceOf(address(this));
+        TI.withdraw(wethBalance);
+        (bool xfer,) = msg.sender.call.value(wethBalance)("");
+        require(xfer, "ERR_ETH_FAILED");
+        return totalAmountIn;
+    }
+
+    function batchEthOutSwapExactOut(
+        Swap[] memory swaps,
+        address tokenIn,
+        address tokenOut,
+        uint totalAmountOut,
+        uint maxTotalAmountIn
+    )
+        public
+        _logs_
+        _lock_
+        returns (uint totalAmountIn)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        TokenInterface TO = TokenInterface(tokenOut);
+        TI.transferFrom(msg.sender, address(this), maxTotalAmountIn);
+        for (uint i = 0; i < swaps.length; i++) {
+            Swap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountIn, uint spotPriceTarget) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            totalAmountIn = add(tokenAmountIn, totalAmountIn);
+        }
+        TI.transfer(msg.sender, TI.balanceOf(address(this)));
+        TO.withdraw(totalAmountOut);
+        (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
+        require(xfer, "ERR_ETH_FAILED");
+        return totalAmountIn;
+    }
 }

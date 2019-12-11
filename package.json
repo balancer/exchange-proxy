@@ -7,7 +7,8 @@
   "scripts": {
     "compile": "truffle compile",
     "testrpc": "ganache-cli --gasLimit 10000000 --allowUnlimitedContractSize",
-    "test": "truffle test"
+    "test": "truffle test",
+    "test:verbose": "VERBOSE=true truffle test"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "chai": "^4.2.0",
     "coveralls": "^3.0.7",
+    "decimal.js": "^10.2.0",
     "ganache-core": "^2.6.1",
     "mocha": "^6.2.0",
     "solidity-coverage": "^0.6.7",

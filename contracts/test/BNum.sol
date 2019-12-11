@@ -11,34 +11,48 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.5.11;
+pragma solidity 0.5.12;
 
-import "./BColor.sol";
 import "./BConst.sol";
 
-contract BNum is BBronze, BConst {
+contract BNum is BConst {
 
-    function btoi(uint a) internal pure returns (uint) {
+    function btoi(uint a)
+        internal pure 
+        returns (uint)
+    {
         return a / BONE;
     }
 
-    function bfloor(uint a) internal pure returns (uint) {
+    function bfloor(uint a)
+        internal pure
+        returns (uint)
+    {
         return btoi(a) * BONE;
     }
 
-    function badd(uint a, uint b) internal pure returns (uint) {
+    function badd(uint a, uint b)
+        internal pure
+        returns (uint)
+    {
         uint c = a + b;
-        require(c >= a, ERR_ADD_OVERFLOW);
+        require(c >= a, "ERR_ADD_OVERFLOW");
         return c;
     }
 
-    function bsub(uint a, uint b) internal pure returns (uint) {
+    function bsub(uint a, uint b)
+        internal pure
+        returns (uint)
+    {
         (uint c, bool flag) = bsubSign(a, b);
-        require(!flag, ERR_SUB_UNDERFLOW);
+        require(!flag, "ERR_SUB_UNDERFLOW");
         return c;
     }
 
-    function bsubSign(uint a, uint b) internal pure returns (uint, bool) {
+    function bsubSign(uint a, uint b)
+        internal pure
+        returns (uint, bool)
+    {
         if (a >= b) {
             return (a - b, false);
         } else {
@@ -46,27 +60,36 @@ contract BNum is BBronze, BConst {
         }
     }
 
-    function bmul(uint a, uint b) internal pure returns (uint) {
+    function bmul(uint a, uint b)
+        internal pure
+        returns (uint)
+    {
         uint c0 = a * b;
-        require(a == 0 || c0 / a == b, ERR_MUL_OVERFLOW);
+        require(a == 0 || c0 / a == b, "ERR_MUL_OVERFLOW");
         uint c1 = c0 + (BONE / 2);
-        require(c1 >= c0, ERR_MUL_OVERFLOW);
+        require(c1 >= c0, "ERR_MUL_OVERFLOW");
         uint c2 = c1 / BONE;
         return c2;
     }
 
-    function bdiv(uint a, uint b) internal pure returns (uint) {
-        require(b != 0, ERR_DIV_ZERO);
+    function bdiv(uint a, uint b)
+        internal pure
+        returns (uint)
+    {
+        require(b != 0, "ERR_DIV_ZERO");
         uint c0 = a * BONE;
-        require(a == 0 || c0 / a == BONE, ERR_DIV_INTERNAL); // bmul overflow
+        require(a == 0 || c0 / a == BONE, "ERR_DIV_INTERNAL"); // bmul overflow
         uint c1 = c0 + (b / 2);
-        require(c1 >= c0, ERR_DIV_INTERNAL); //  badd require
+        require(c1 >= c0, "ERR_DIV_INTERNAL"); //  badd require
         uint c2 = c1 / b;
         return c2;
     }
 
     // DSMath.wpow
-    function bpowi(uint a, uint n) internal pure returns (uint) {
+    function bpowi(uint a, uint n)
+        internal pure
+        returns (uint)
+    {
         uint z = n % 2 != 0 ? a : BONE;
 
         for (n /= 2; n != 0; n /= 2) {
@@ -83,11 +106,11 @@ contract BNum is BBronze, BConst {
     // Use `bpowi` for `b^e` and `bpowK` for k iterations
     // of approximation of b^0.w
     function bpow(uint base, uint exp)
-      pure internal
+        internal pure
         returns (uint)
     {
-        require(base >= MIN_BPOW_BASE, ERR_BPOW_BASE_TOO_LOW);
-        require(base <= MAX_BPOW_BASE, ERR_BPOW_BASE_TOO_HIGH);
+        require(base >= MIN_BPOW_BASE, "ERR_BPOW_BASE_TOO_LOW");
+        require(base <= MAX_BPOW_BASE, "ERR_BPOW_BASE_TOO_HIGH");
 
         uint whole  = bfloor(exp);   
         uint remain = bsub(exp, whole);
@@ -103,7 +126,7 @@ contract BNum is BBronze, BConst {
     }
 
     function bpowApprox(uint base, uint exp, uint precision)
-      pure internal
+        internal pure
         returns (uint)
     {
         // term 0:
@@ -118,20 +141,19 @@ contract BNum is BBronze, BConst {
         //         = (product(a - i - 1, i=1-->k) * x^k) / (k!)
         // each iteration, multiply previous term by (a-(k-1)) * x / k
         // continue until term is less than precision
-        for( uint i = 1; term >= precision; i++) {
+        for (uint i = 1; term >= precision; i++) {
             uint bigK = i * BONE;
             (uint c, bool cneg) = bsubSign(a, bsub(bigK, BONE));
-
-            term                = bmul(term, bmul(c, x));
-            term                = bdiv(term, bigK);
+            term = bmul(term, bmul(c, x));
+            term = bdiv(term, bigK);
             if (term == 0) break;
 
             if (xneg) negative = !negative;
             if (cneg) negative = !negative;
             if (negative) {
-                sum      = bsub(sum, term);
+                sum = bsub(sum, term);
             } else {
-                sum      = badd(sum, term);
+                sum = badd(sum, term);
             }
         }
 

@@ -11,36 +11,37 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.5.11;
+pragma solidity 0.5.12;
 
 // Builds new BPools, logging their addresses and providing `isBPool(address) -> (bool)`
 
-import './BColor.sol';
-import './BPool.sol';
+import "./BPool.sol";
 
-contract BFactory is BBronze
-{
-    event LOG_NEW_POOL( address indexed caller
-                      , address indexed pool );
+contract BFactory is BBronze {
+    event LOG_NEW_POOL(
+        address indexed caller,
+        address indexed pool
+    );
 
-    mapping(address=>bool) _isBPool;
+    mapping(address=>bool) private _isBPool;
 
     function isBPool(address b)
-      external view returns (bool) {
+        external view returns (bool)
+    {
         return _isBPool[b];
     }
 
     function newBPool()
-      external returns (BPool)
+        external returns (BPool)
     {
         BPool bpool = new BPool();
         _isBPool[address(bpool)] = true;
-        bpool.setController(msg.sender);
         emit LOG_NEW_POOL(msg.sender, address(bpool));
+        bpool.setController(msg.sender);
         return bpool;
     }
 
-    address _blabs;
+    address private _blabs;
     constructor() public {
         _blabs = msg.sender;
     }
@@ -52,10 +53,10 @@ contract BFactory is BBronze
         _blabs = b;
     }
     function collect(BPool pool)
-      external 
+        external 
     {
         require(msg.sender == _blabs, "ERR_NOT_BLABS");
-        uint collected = ERC20(pool).balanceOf(address(this));
+        uint collected = IERC20(pool).balanceOf(address(this));
         bool xfer = pool.transfer(_blabs, collected);
         require(xfer, "ERR_ERC20_FAILED");
     }

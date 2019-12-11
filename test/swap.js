@@ -3,6 +3,25 @@ const TToken = artifacts.require('TToken');
 const TTokenFactory = artifacts.require('TTokenFactory');
 const BFactory = artifacts.require('BFactory');
 const BPool = artifacts.require('BPool');
+const Decimal = require('decimal.js');
+const errorDelta = 10 ** -8;
+const verbose = process.env.VERBOSE;
+
+Decimal.set({ precision: 18, rounding: Decimal.ROUND_HALF_CEIL }) 
+
+function calcRelativeDiff(_expected, _actual) {
+    return Math.abs((_expected - _actual) / _expected);
+}
+
+function calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn, swapFee) {
+  let weightRatio = Decimal(tokenWeightIn).div(Decimal(tokenWeightOut));
+  let adjustedIn = Decimal(tokenAmountIn).times((Decimal(1).minus(Decimal(swapFee))));
+  let y = Decimal(tokenBalanceIn).div(Decimal(tokenBalanceIn).plus(adjustedIn));
+  let foo = y.pow(weightRatio);
+  let bar = Decimal(1).minus(foo);
+  let tokenAmountOut = Decimal(tokenBalanceOut).times(bar);
+  return tokenAmountOut;
+}
 
 contract('ExchangeProxy', async (accounts) => {
   const admin = accounts[0];
@@ -111,18 +130,30 @@ contract('ExchangeProxy', async (accounts) => {
           MAX
         ]
       ]
+      let totalAmountOut = await proxy.batchSwapExactIn.call(swaps, WETH, DAI, toWei('2'), toWei('0'), { from: nonAdmin });
+
+      let pool_a_out = calcOutGivenIn(6, 5, 1200, 5, 0.5, 0);
+      let pool_b_out = calcOutGivenIn(2, 10, 800, 20, 0.5, 0);
+      let pool_c_out = calcOutGivenIn(15, 5, 2500, 5, 1, 0);
+
+      console.log(pool_a_out)
+      console.log(pool_b_out)
+      console.log(pool_c_out)
+
+      let expectedTotalOut = pool_a_out.plus(pool_b_out).plus(pool_c_out);
+
+      let relDif = calcRelativeDiff(expectedTotalOut, fromWei(totalAmountOut));
+      if (verbose) {
+          console.log('Pool Balance');
+          console.log(`expected: ${expectedTotalOut})`);
+          console.log(`actual  : ${fromWei(totalAmountOut)})`);
+          console.log(`relDif  : ${relDif})`);
+      }
+
+      assert.isAtMost(relDif, (errorDelta * 3));
+
       await proxy.batchSwapExactIn(swaps, WETH, DAI, toWei('2'), toWei('0'), { from: nonAdmin });
-      let aBalanceEth = await pool_a.getBalance(WETH);
-      let aBalanceDai = await pool_a.getBalance(DAI);
-
-      assert.equal(fromWei(aBalanceEth), 6.5);
-      assert.equal(fromWei(aBalanceDai), 1107.6923076923076924);
-
-      let nonAdminBalanceEth = await weth.balanceOf(nonAdmin);
-      let nonAdminBalanceDai = await dai.balanceOf(nonAdmin);
-
-      assert.equal(fromWei(nonAdminBalanceEth), 48);
-      assert.equal(fromWei(nonAdminBalanceDai), 10333.0159395028118396);
+      
     });
 
     it('batchSwapExactOut', async () => {
@@ -147,17 +178,7 @@ contract('ExchangeProxy', async (accounts) => {
         ]
       ]
       await proxy.batchSwapExactOut(swaps, WETH, DAI, toWei('700'), toWei('7'), { from: nonAdmin });
-      let aBalanceEth = await pool_a.getBalance(WETH);
-      let aBalanceDai = await pool_a.getBalance(DAI);
-
-      assert.equal(fromWei(aBalanceEth), 7.145038167938931299)
-      assert.equal(fromWei(aBalanceDai), 1007.6923076923076924)
-
-      let nonAdminBalanceEth = await weth.balanceOf(nonAdmin);
-      let nonAdminBalanceDai = await dai.balanceOf(nonAdmin);
-
-      assert.equal(fromWei(nonAdminBalanceEth), 42.137704274797561871);
-      assert.equal(fromWei(nonAdminBalanceDai), 11033.0159395028118396);
+      
     });
 
   });
