@@ -68,8 +68,6 @@ contract ExchangeProxy {
         return c;
     }
 
-    // Needs to be public. ABIEncoderV2 does not support external functions
-    // TODO - check totalAmountOut > minTotalAmountOut
     // TODO - consider if function should revert if not all trades execute
     function batchSwapExactIn(
         Swap[] memory swaps,
@@ -93,14 +91,14 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountOut, uint spotPriceTarget) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
+        require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
         TO.transfer(msg.sender, totalAmountOut);
         return totalAmountOut;
     }
 
-    // Needs to be public. ABIEncoderV2 does not support external functions
     // TODO - consider if function should revert if not all trades execute
     function batchSwapExactOut(
         Swap[] memory swaps,
@@ -123,9 +121,10 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountIn, uint spotPriceTarget) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
+        require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
         TO.transfer(msg.sender, totalAmountOut);
         TI.transfer(msg.sender, TI.balanceOf(address(this)));
         return totalAmountIn;
@@ -152,9 +151,10 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountOut, uint spotPriceTarget) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
+        require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
         TO.transfer(msg.sender, totalAmountOut);
         return totalAmountOut;
     }
@@ -179,9 +179,10 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountOut, uint spotPriceTarget) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
+        require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
         TO.withdraw(totalAmountOut);
         (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
         require(xfer, "ERR_ETH_FAILED");
@@ -209,9 +210,10 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountIn, uint spotPriceTarget) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
+        require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
         TO.transfer(msg.sender, totalAmountOut);
         uint wethBalance = TI.balanceOf(address(this));
         TI.withdraw(wethBalance);
@@ -241,9 +243,10 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountIn, uint spotPriceTarget) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
+        require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
         TI.transfer(msg.sender, TI.balanceOf(address(this)));
         TO.withdraw(totalAmountOut);
         (bool xfer,) = msg.sender.call.value(totalAmountOut)("");

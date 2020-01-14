@@ -1,36 +1,14 @@
+const truffleAssert = require('truffle-assertions');
+const Decimal = require('decimal.js');
+const { calcOutGivenIn, calcInGivenOut, calcRelativeDiff } = require('../lib/calc_comparisons');
+
 const ExchangeProxy = artifacts.require('ExchangeProxy');
 const TToken = artifacts.require('TToken');
 const TTokenFactory = artifacts.require('TTokenFactory');
 const BFactory = artifacts.require('BFactory');
 const BPool = artifacts.require('BPool');
-const Decimal = require('decimal.js');
 const errorDelta = 10 ** -8;
 const verbose = process.env.VERBOSE;
-
-Decimal.set({ precision: 18 }) 
-
-function calcRelativeDiff(_expected, _actual) {
-    return Math.abs((_expected - _actual) / _expected);
-}
-
-function calcOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn, swapFee) {
-  let weightRatio = Decimal(tokenWeightIn).div(Decimal(tokenWeightOut));
-  let adjustedIn = Decimal(tokenAmountIn).times((Decimal(1).minus(Decimal(swapFee))));
-  let y = Decimal(tokenBalanceIn).div(Decimal(tokenBalanceIn).plus(adjustedIn));
-  let foo = y.pow(weightRatio);
-  let bar = Decimal(1).minus(foo);
-  let tokenAmountOut = Decimal(tokenBalanceOut).times(bar);
-  return tokenAmountOut;
-}
-
-function calcInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut, swapFee) {
-  let weightRatio = Decimal(tokenWeightOut).div(Decimal(tokenWeightIn));
-  let diff = Decimal(tokenBalanceOut).minus(tokenAmountOut);
-  let y = Decimal(tokenBalanceOut).div(diff);
-  let foo = y.pow(weightRatio).minus(Decimal(1));
-  let tokenAmountIn = (Decimal(tokenBalanceIn).times(foo)).div(Decimal(1).minus(Decimal(swapFee)));
-  return tokenAmountIn;
-}
 
 contract('ExchangeProxy', async (accounts) => {
   const admin = accounts[0];
@@ -148,7 +126,8 @@ contract('ExchangeProxy', async (accounts) => {
 
       let expectedTotalOut = pool_a_out.plus(pool_b_out).plus(pool_c_out);
 
-      let relDif = calcRelativeDiff(expectedTotalOut, fromWei(totalAmountOut));
+      let relDif = calcRelativeDiff(expectedTotalOut, Decimal(fromWei(totalAmountOut)));
+
       if (verbose) {
           console.log('Pool Balance');
           console.log(`expected: ${expectedTotalOut})`);
@@ -156,7 +135,7 @@ contract('ExchangeProxy', async (accounts) => {
           console.log(`relDif  : ${relDif})`);
       }
 
-      assert.isAtMost(relDif, (errorDelta * swaps.length));
+      assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
 
     });
 
@@ -191,7 +170,7 @@ contract('ExchangeProxy', async (accounts) => {
 
       let expectedTotalIn = pool_a_in.plus(pool_b_in).plus(pool_c_in);
 
-      let relDif = calcRelativeDiff(expectedTotalIn, fromWei(totalAmountIn));
+      let relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
       if (verbose) {
           console.log('Pool Balance');
           console.log(`expected: ${expectedTotalIn})`);
@@ -199,7 +178,7 @@ contract('ExchangeProxy', async (accounts) => {
           console.log(`relDif  : ${relDif})`);
       }
 
-      assert.isAtMost(relDif, (errorDelta * swaps.length));
+      assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
       
     });
 
