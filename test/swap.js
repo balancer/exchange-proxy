@@ -54,9 +54,9 @@ contract('ExchangeProxy', async (accounts) => {
       tokens = await TTokenFactory.deployed();
       factory = await BFactory.deployed();
 
-      await tokens.build(toHex("WETH"));
-      await tokens.build(toHex("DAI"));
-      await tokens.build(toHex("MKR"));
+      await tokens.build(toHex("WETH"), toHex("WETH"), 18);
+      await tokens.build(toHex("DAI"), toHex("WETH"), 18);
+      await tokens.build(toHex("MKR"), toHex("WETH"), 18);
 
       WETH = await tokens.get.call(toHex("WETH"));
       DAI = await tokens.get.call(toHex("DAI"));
@@ -66,13 +66,13 @@ contract('ExchangeProxy', async (accounts) => {
       dai = await TToken.at(DAI);
       mkr = await TToken.at(MKR);
 
-      await weth.mint(toWei('50'));
-      await dai.mint(toWei('10000'));
-      await mkr.mint(toWei('20'));
+      await weth.mint(admin, toWei('50'));
+      await dai.mint(admin, toWei('10000'));
+      await mkr.mint(admin, toWei('20'));
 
-      await weth.mint(toWei('50'), { from: nonAdmin });
-      await dai.mint(toWei('10000'), { from: nonAdmin });
-      await mkr.mint(toWei('20'), { from: nonAdmin });
+      await weth.mint(nonAdmin, toWei('50'));
+      await dai.mint(nonAdmin, toWei('10000'));
+      await mkr.mint(nonAdmin, toWei('20'));
 
       POOL_A = await factory.newBPool.call(); // this works fine in clean room
       await factory.newBPool();

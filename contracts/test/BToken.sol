@@ -17,11 +17,26 @@ import "./BNum.sol";
 
 // Highly opinionated token implementation
 
+interface IERC20 {
+    event Approval(address indexed src, address indexed dst, uint amt);
+    event Transfer(address indexed src, address indexed dst, uint amt);
+
+    function totalSupply() external view returns (uint);
+    function balanceOf(address whom) external view returns (uint);
+    function allowance(address src, address dst) external view returns (uint);
+
+    function approve(address dst, uint amt) external returns (bool);
+    function transfer(address dst, uint amt) external returns (bool);
+    function transferFrom(
+        address src, address dst, uint amt
+    ) external returns (bool);
+}
+
 contract BTokenBase is BNum {
-    mapping(address=>
-        mapping(address=>uint))   internal _allowance;
-    mapping(address=>uint)        internal _balance;
-    uint                          internal _totalSupply;
+
+    mapping(address => uint)                   internal _balance;
+    mapping(address => mapping(address=>uint)) internal _allowance;
+    uint internal _totalSupply;
 
     event Approval(address indexed src, address indexed dst, uint amt);
     event Transfer(address indexed src, address indexed dst, uint amt);
@@ -53,25 +68,25 @@ contract BTokenBase is BNum {
     function _pull(address from, uint amt) internal {
         _move(from, address(this), amt);
     }
-
 }
 
-interface IERC20 {
-    event Approval(address indexed src, address indexed dst, uint amt);
-    event Transfer(address indexed src, address indexed dst, uint amt);
+contract BToken is BTokenBase, IERC20 {
 
-    function totalSupply() external view returns (uint);
-    function balanceOf(address whom) external view returns (uint);
-    function allowance(address src, address dst) external view returns (uint);
+    string  private _name     = "Balancer Pool Token";
+    string  private _symbol   = "BPT";
+    uint8   private _decimals = 18;
 
-    function approve(address dst, uint amt) external returns (bool);
-    function transfer(address dst, uint amt) external returns (bool);
-    function transferFrom(
-        address src, address dst, uint amt
-    ) external returns (bool);
-}
+    function name() public view returns (string memory) {
+        return _name;
+    }
 
-contract BToken is BBronze, BTokenBase, IERC20 {
+    function symbol() public view returns (string memory) {
+        return _symbol;
+    }
+
+    function decimals() public view returns(uint8) {
+        return _decimals;
+    }
 
     function allowance(address src, address dst) external view returns (uint) {
         return _allowance[src][dst];

@@ -11,7 +11,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.5.11;
+pragma solidity 0.5.12;
 
 import "./TToken.sol";
 
@@ -20,8 +20,8 @@ contract TTokenFactory {
     function get(bytes32 name) external view returns (TToken) {
         return tokens[name];
     }
-    function build(bytes32 name) external returns (TToken) {
-        tokens[name] = new TToken();
+    function build(bytes32 name, bytes32 symbol, uint8 decimals) external returns (TToken) {
+        tokens[name] = new TToken(name, symbol, decimals);
         return tokens[name];
     }
 }
