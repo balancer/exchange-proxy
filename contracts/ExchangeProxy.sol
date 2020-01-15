@@ -68,7 +68,6 @@ contract ExchangeProxy {
         return c;
     }
 
-    // TODO - consider if function should revert if not all trades execute
     function batchSwapExactIn(
         Swap[] memory swaps,
         address tokenIn,
@@ -105,7 +104,6 @@ contract ExchangeProxy {
         return totalAmountOut;
     }
 
-    // TODO - consider if function should revert if not all trades execute
     function batchSwapExactOut(
         Swap[] memory swaps,
         address tokenIn,
@@ -282,7 +280,7 @@ contract ExchangeProxy {
                                         swap.tokenOutParam,
                                         swap.maxPrice
                                     );
-            
+
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");

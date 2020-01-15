@@ -6,6 +6,7 @@ const TToken = artifacts.require('TToken');
 const TTokenFactory = artifacts.require('TTokenFactory');
 const BFactory = artifacts.require('BFactory');
 const BPool = artifacts.require('BPool');
+const Weth9 = artifacts.require('WETH9');
 const errorDelta = 10 ** -8;
 const verbose = process.env.VERBOSE;
 
@@ -32,24 +33,23 @@ contract('ExchangeProxy', async (accounts) => {
             PROXY = proxy.address;
             tokens = await TTokenFactory.deployed();
             factory = await BFactory.deployed();
+            weth = await Weth9.deployed();
+            WETH = weth.address;
+            
+            await tokens.build(toHex('DAI'), toHex('DAI'), 18);
+            await tokens.build(toHex('MKR'), toHex('MKR'), 18);
 
-            await tokens.build(toHex('WETH'), toHex('WETH'), 18);
-            await tokens.build(toHex('DAI'), toHex('WETH'), 18);
-            await tokens.build(toHex('MKR'), toHex('WETH'), 18);
-
-            WETH = await tokens.get.call(toHex('WETH'));
             DAI = await tokens.get.call(toHex('DAI'));
             MKR = await tokens.get.call(toHex('MKR'));
 
-            weth = await TToken.at(WETH);
             dai = await TToken.at(DAI);
             mkr = await TToken.at(MKR);
 
-            await weth.mint(admin, toWei('50'));
+            await weth.deposit({ value: toWei('50')});
             await dai.mint(admin, toWei('10000'));
             await mkr.mint(admin, toWei('20'));
 
-            await weth.mint(nonAdmin, toWei('50'));
+            await weth.deposit({ from: nonAdmin, value: toWei('50')});
             await dai.mint(nonAdmin, toWei('10000'));
             await mkr.mint(nonAdmin, toWei('20'));
 
