@@ -185,5 +185,51 @@ contract('ExchangeProxy', async (accounts) => {
 
             assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
         });
+
+        it('batchEthInSwapExactIn dry', async () => {
+            const swaps = [
+                [
+                    POOL1,
+                    toWei('1'),
+                    toWei('100'),
+                    MAX,
+                ],
+                [
+                    POOL2,
+                    toWei('1'),
+                    toWei('100'),
+                    MAX,
+                ],
+                [
+                    POOL3,
+                    toWei('5'),
+                    toWei('500'),
+                    MAX,
+                ],
+            ];
+
+            const swapFee = fromWei(await pool1.getSwapFee());
+            const totalAmountIn = await proxy.batchEthInSwapExactIn.call(
+                swaps, WETH, DAI, toWei('2'), toWei('0'),
+                { from: nonAdmin },
+            );
+
+            const pool1Out = calcOutGivenIn(6, 5, 1200, 5, 0.5, swapFee);
+            const pool2Out = calcOutGivenIn(2, 10, 800, 20, 0.5, swapFee);
+            const pool3Out = calcOutGivenIn(15, 5, 2500, 5, 1, swapFee);
+
+            const expectedTotalOut = pool1Out.plus(pool2Out).plus(pool3Out);
+
+            const relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
+            if (verbose) {
+                console.log('Pool Balance');
+                console.log(`expected: ${expectedTotalIn})`);
+                console.log(`actual  : ${fromWei(totalAmountIn)})`);
+                console.log(`relDif  : ${relDif})`);
+            }
+
+            assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
+        });
+        
     });
 });
