@@ -15,9 +15,6 @@ pragma solidity 0.5.12;
 pragma experimental ABIEncoderV2;
 
 
-// DO NOT USE ON MAINNET
-// This contract is under development and tokens can easily get stuck forever
-
 contract PoolInterface {
     function swapExactAmountIn(address, uint, address, uint, uint) external returns (uint, uint);
     function swapExactAmountOut(address, uint, address, uint, uint) external returns (uint, uint);
@@ -61,6 +58,11 @@ contract ExchangeProxy {
     }
 
     bool private _mutex;
+    TokenInterface weth;
+
+    constructor(address _weth) public {
+        weth = TokenInterface(_weth);
+    }
 
     function add(uint a, uint b) internal pure returns (uint) {
         uint c = a + b;
@@ -142,9 +144,7 @@ contract ExchangeProxy {
 
     function batchEthInSwapExactIn(
         Swap[] memory swaps,
-        address tokenIn,
         address tokenOut,
-        uint totalAmountIn,
         uint minTotalAmountOut
     )
         public payable
@@ -152,17 +152,16 @@ contract ExchangeProxy {
         _lock_
         returns (uint totalAmountOut)
     {
-        TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
-        TI.deposit.value(msg.value)();
+        weth.deposit.value(msg.value)();
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
-            if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
-                TI.approve(swap.pool, uint(-1));
+            if (weth.allowance(address(this), swap.pool) < msg.value) {
+                weth.approve(swap.pool, uint(-1));
             }
             (uint tokenAmountOut,) = pool.swapExactAmountIn(
-                                        tokenIn,
+                                        address(weth),
                                         swap.tokenInParam,
                                         tokenOut,
                                         swap.tokenOutParam,
@@ -178,7 +177,6 @@ contract ExchangeProxy {
     function batchEthOutSwapExactIn(
         Swap[] memory swaps,
         address tokenIn,
-        address tokenOut,
         uint totalAmountIn,
         uint minTotalAmountOut
     )
@@ -188,7 +186,7 @@ contract ExchangeProxy {
         returns (uint totalAmountOut)
     {
         TokenInterface TI = TokenInterface(tokenIn);
-        TokenInterface TO = TokenInterface(tokenOut);
+        TI.transferFrom(msg.sender, address(this), totalAmountIn);
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
@@ -198,7 +196,7 @@ contract ExchangeProxy {
             (uint tokenAmountOut,) = pool.swapExactAmountIn(
                                         tokenIn,
                                         swap.tokenInParam,
-                                        tokenOut,
+                                        address(weth),
                                         swap.tokenOutParam,
                                         swap.maxPrice
                                     );
@@ -206,7 +204,7 @@ contract ExchangeProxy {
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
-        TO.withdraw(totalAmountOut);
+        weth.withdraw(totalAmountOut);
         (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
         require(xfer, "ERR_ETH_FAILED");
         return totalAmountOut;
@@ -214,27 +212,24 @@ contract ExchangeProxy {
 
     function batchEthInSwapExactOut(
         Swap[] memory swaps,
-        address tokenIn,
         address tokenOut,
-        uint totalAmountOut,
-        uint maxTotalAmountIn
+        uint totalAmountOut
     )
         public payable
         _logs_
         _lock_
         returns (uint totalAmountIn)
     {
-        TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
-        TI.deposit.value(msg.value)();
+        weth.deposit.value(msg.value)();
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
-            if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
-                TI.approve(swap.pool, uint(-1));
+            if (weth.allowance(address(this), swap.pool) < msg.value) {
+                weth.approve(swap.pool, uint(-1));
             }
             (uint tokenAmountIn,) = pool.swapExactAmountOut(
-                                        tokenIn,
+                                        address(weth),
                                         swap.tokenInParam,
                                         tokenOut,
                                         swap.tokenOutParam,
@@ -243,10 +238,9 @@ contract ExchangeProxy {
 
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
-        require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
         TO.transfer(msg.sender, totalAmountOut);
-        uint wethBalance = TI.balanceOf(address(this));
-        TI.withdraw(wethBalance);
+        uint wethBalance = weth.balanceOf(address(this));
+        weth.withdraw(wethBalance);
         (bool xfer,) = msg.sender.call.value(wethBalance)("");
         require(xfer, "ERR_ETH_FAILED");
         return totalAmountIn;
@@ -255,7 +249,6 @@ contract ExchangeProxy {
     function batchEthOutSwapExactOut(
         Swap[] memory swaps,
         address tokenIn,
-        address tokenOut,
         uint totalAmountOut,
         uint maxTotalAmountIn
     )
@@ -265,7 +258,6 @@ contract ExchangeProxy {
         returns (uint totalAmountIn)
     {
         TokenInterface TI = TokenInterface(tokenIn);
-        TokenInterface TO = TokenInterface(tokenOut);
         TI.transferFrom(msg.sender, address(this), maxTotalAmountIn);
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
@@ -276,7 +268,7 @@ contract ExchangeProxy {
             (uint tokenAmountIn,) = pool.swapExactAmountOut(
                                         tokenIn,
                                         swap.tokenInParam,
-                                        tokenOut,
+                                        address(weth),
                                         swap.tokenOutParam,
                                         swap.maxPrice
                                     );
@@ -285,9 +277,11 @@ contract ExchangeProxy {
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
         TI.transfer(msg.sender, TI.balanceOf(address(this)));
-        TO.withdraw(totalAmountOut);
+        weth.withdraw(totalAmountOut);
         (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
         require(xfer, "ERR_ETH_FAILED");
         return totalAmountIn;
     }
+
+    function() external payable {}
 }
