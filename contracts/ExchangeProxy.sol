@@ -27,7 +27,7 @@ contract TokenInterface {
     function balanceOf(address) public returns (uint);
     function allowance(address, address) public returns (uint);
     function approve(address, uint) public returns (bool);
-    function transfer(address,uint) public returns (bool);
+    function transfer(address, uint) public returns (bool);
     function transferFrom(address, address, uint) public returns (bool);
     function deposit() public payable;
     function withdraw(uint) public;
@@ -91,7 +91,13 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountOut,) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
@@ -121,7 +127,13 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountIn,) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
@@ -151,7 +163,13 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountOut,) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
@@ -179,7 +197,14 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountOut,) = pool.swapExactAmountIn(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
@@ -210,7 +235,14 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountIn,) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
@@ -243,7 +275,14 @@ contract ExchangeProxy {
             if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
                 TI.approve(swap.pool, uint(-1));
             }
-            (uint tokenAmountIn,) = pool.swapExactAmountOut(tokenIn, swap.tokenInParam, tokenOut, swap.tokenOutParam, swap.maxPrice);
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+            
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
