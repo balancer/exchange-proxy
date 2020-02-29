@@ -84,7 +84,7 @@ contract ExchangeProxy {
     {
         TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
-        TI.transferFrom(msg.sender, address(this), totalAmountIn);
+        require(TI.transferFrom(msg.sender, address(this), totalAmountIn), "ERR_TRANSFER_FAILED");
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             
@@ -102,8 +102,8 @@ contract ExchangeProxy {
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
-        TO.transfer(msg.sender, totalAmountOut);
-        TI.transfer(msg.sender, TI.balanceOf(address(this)));
+        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         return totalAmountOut;
     }
 
@@ -121,7 +121,7 @@ contract ExchangeProxy {
     {
         TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
-        TI.transferFrom(msg.sender, address(this), maxTotalAmountIn);
+        require(TI.transferFrom(msg.sender, address(this), maxTotalAmountIn), "ERR_TRANSFER_FAILED");
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
@@ -138,8 +138,8 @@ contract ExchangeProxy {
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
-        TO.transfer(msg.sender, totalAmountOut);
-        TI.transfer(msg.sender, TI.balanceOf(address(this)));
+        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         return totalAmountIn;
     }
 
@@ -171,7 +171,7 @@ contract ExchangeProxy {
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
-        TO.transfer(msg.sender, totalAmountOut);
+        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
         uint wethBalance = weth.balanceOf(address(this));
         if (wethBalance > 0) {
             weth.withdraw(wethBalance);
@@ -193,7 +193,7 @@ contract ExchangeProxy {
         returns (uint totalAmountOut)
     {
         TokenInterface TI = TokenInterface(tokenIn);
-        TI.transferFrom(msg.sender, address(this), totalAmountIn);
+        require(TI.transferFrom(msg.sender, address(this), totalAmountIn), "ERR_TRANSFER_FAILED");
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
@@ -214,7 +214,7 @@ contract ExchangeProxy {
         weth.withdraw(totalAmountOut);
         (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
         require(xfer, "ERR_ETH_FAILED");
-        TI.transfer(msg.sender, TI.balanceOf(address(this)));
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         return totalAmountOut;
     }
 
@@ -246,7 +246,7 @@ contract ExchangeProxy {
 
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
-        TO.transfer(msg.sender, totalAmountOut);
+        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
         uint wethBalance = weth.balanceOf(address(this));
         if (wethBalance > 0) {
             weth.withdraw(wethBalance);
@@ -268,7 +268,7 @@ contract ExchangeProxy {
         returns (uint totalAmountIn)
     {
         TokenInterface TI = TokenInterface(tokenIn);
-        TI.transferFrom(msg.sender, address(this), maxTotalAmountIn);
+        require(TI.transferFrom(msg.sender, address(this), maxTotalAmountIn), "ERR_TRANSFER_FAILED");
         for (uint i = 0; i < swaps.length; i++) {
             Swap memory swap = swaps[i];
             PoolInterface pool = PoolInterface(swap.pool);
@@ -286,7 +286,7 @@ contract ExchangeProxy {
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
-        TI.transfer(msg.sender, TI.balanceOf(address(this)));
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         weth.withdraw(totalAmountOut);
         (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
         require(xfer, "ERR_ETH_FAILED");
