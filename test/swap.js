@@ -36,8 +36,7 @@ contract('ExchangeProxy', async (accounts) => {
             PROXY = proxy.address;
             tokens = await TTokenFactory.deployed();
             factory = await BFactory.deployed();
-            
-            
+
             await tokens.build(toHex('DAI'), toHex('DAI'), 18);
             await tokens.build(toHex('MKR'), toHex('MKR'), 18);
 
@@ -47,11 +46,11 @@ contract('ExchangeProxy', async (accounts) => {
             dai = await TToken.at(DAI);
             mkr = await TToken.at(MKR);
 
-            await weth.deposit({ value: toWei('25')});
+            await weth.deposit({ value: toWei('25') });
             await dai.mint(admin, toWei('10000'));
             await mkr.mint(admin, toWei('20'));
 
-            await weth.deposit({ from: nonAdmin, value: toWei('25')});
+            await weth.deposit({ from: nonAdmin, value: toWei('25') });
             await dai.mint(nonAdmin, toWei('10000'));
             await mkr.mint(nonAdmin, toWei('20'));
 
@@ -231,7 +230,6 @@ contract('ExchangeProxy', async (accounts) => {
             }
 
             assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
-
         });
 
         it('batchEthOutSwapExactIn dry', async () => {
@@ -277,7 +275,6 @@ contract('ExchangeProxy', async (accounts) => {
             }
 
             assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
-
         });
 
         it('batchEthInSwapExactOut dry', async () => {
@@ -369,19 +366,5 @@ contract('ExchangeProxy', async (accounts) => {
 
             assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
         });
-
-        
-
-        
-
-
-        // let proxyEthBalance = fromWei(await web3.eth.getBalance(PROXY));
-        // let proxyDaiBalance = fromWei(await dai.balanceOf(PROXY));
-        // let proxyMkrBalance = fromWei(await mkr.balanceOf(PROXY));
-
-        // assert.equal(0, proxyEthBalance);
-        // assert.equal(0, proxyDaiBalance);
-        // assert.equal(0, proxyMkrBalance);
-
     });
 });

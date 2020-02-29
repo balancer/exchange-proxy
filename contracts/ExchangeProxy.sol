@@ -103,6 +103,7 @@ contract ExchangeProxy {
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
         TO.transfer(msg.sender, totalAmountOut);
+        TI.transfer(msg.sender, TI.balanceOf(address(this)));
         return totalAmountOut;
     }
 
@@ -171,6 +172,12 @@ contract ExchangeProxy {
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
         TO.transfer(msg.sender, totalAmountOut);
+        uint wethBalance = weth.balanceOf(address(this));
+        if (wethBalance > 0) {
+            weth.withdraw(wethBalance);
+            (bool xfer,) = msg.sender.call.value(wethBalance)("");
+            require(xfer, "ERR_ETH_FAILED");
+        }
         return totalAmountOut;
     }
 
@@ -207,6 +214,7 @@ contract ExchangeProxy {
         weth.withdraw(totalAmountOut);
         (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
         require(xfer, "ERR_ETH_FAILED");
+        TI.transfer(msg.sender, TI.balanceOf(address(this)));
         return totalAmountOut;
     }
 
@@ -240,9 +248,11 @@ contract ExchangeProxy {
         }
         TO.transfer(msg.sender, totalAmountOut);
         uint wethBalance = weth.balanceOf(address(this));
-        weth.withdraw(wethBalance);
-        (bool xfer,) = msg.sender.call.value(wethBalance)("");
-        require(xfer, "ERR_ETH_FAILED");
+        if (wethBalance > 0) {
+            weth.withdraw(wethBalance);
+            (bool xfer,) = msg.sender.call.value(wethBalance)("");
+            require(xfer, "ERR_ETH_FAILED");
+        }
         return totalAmountIn;
     }
 
