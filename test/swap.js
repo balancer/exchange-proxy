@@ -166,7 +166,7 @@ contract('ExchangeProxy', async (accounts) => {
 
             const swapFee = fromWei(await pool1.getSwapFee());
             const totalAmountIn = await proxy.batchSwapExactOut.call(
-                swaps, WETH, DAI, toWei('700'), toWei('7'),
+                swaps, WETH, DAI, toWei('7'),
                 { from: nonAdmin },
             );
 
@@ -301,7 +301,7 @@ contract('ExchangeProxy', async (accounts) => {
 
             const swapFee = fromWei(await pool1.getSwapFee());
             const totalAmountIn = await proxy.batchEthInSwapExactOut.call(
-                swaps, DAI, toWei('700'),
+                swaps, DAI,
                 { from: nonAdmin, value: toWei('7.5') },
             );
 
@@ -346,7 +346,7 @@ contract('ExchangeProxy', async (accounts) => {
 
             const swapFee = fromWei(await pool1.getSwapFee());
             const totalAmountIn = await proxy.batchEthOutSwapExactOut.call(
-                swaps, DAI, toWei('3.5'), toWei('750'),
+                swaps, DAI, toWei('750'),
                 { from: nonAdmin },
             );
 

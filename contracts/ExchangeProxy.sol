@@ -102,7 +102,7 @@ contract ExchangeProxy {
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
-        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         return totalAmountOut;
     }
@@ -111,7 +111,6 @@ contract ExchangeProxy {
         Swap[] memory swaps,
         address tokenIn,
         address tokenOut,
-        uint totalAmountOut,
         uint maxTotalAmountIn
     )
         public
@@ -138,7 +137,7 @@ contract ExchangeProxy {
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
-        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         return totalAmountIn;
     }
@@ -171,7 +170,7 @@ contract ExchangeProxy {
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
-        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         uint wethBalance = weth.balanceOf(address(this));
         if (wethBalance > 0) {
             weth.withdraw(wethBalance);
@@ -211,8 +210,9 @@ contract ExchangeProxy {
             totalAmountOut = add(tokenAmountOut, totalAmountOut);
         }
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
-        weth.withdraw(totalAmountOut);
-        (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
+        uint wethBalance = weth.balanceOf(address(this));
+        weth.withdraw(wethBalance);
+        (bool xfer,) = msg.sender.call.value(wethBalance)("");
         require(xfer, "ERR_ETH_FAILED");
         require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         return totalAmountOut;
@@ -220,8 +220,7 @@ contract ExchangeProxy {
 
     function batchEthInSwapExactOut(
         Swap[] memory swaps,
-        address tokenOut,
-        uint totalAmountOut
+        address tokenOut
     )
         public payable
         _logs_
@@ -246,7 +245,7 @@ contract ExchangeProxy {
 
             totalAmountIn = add(tokenAmountIn, totalAmountIn);
         }
-        require(TO.transfer(msg.sender, totalAmountOut), "ERR_TRANSFER_FAILED");
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         uint wethBalance = weth.balanceOf(address(this));
         if (wethBalance > 0) {
             weth.withdraw(wethBalance);
@@ -259,7 +258,6 @@ contract ExchangeProxy {
     function batchEthOutSwapExactOut(
         Swap[] memory swaps,
         address tokenIn,
-        uint totalAmountOut,
         uint maxTotalAmountIn
     )
         public
@@ -287,8 +285,9 @@ contract ExchangeProxy {
         }
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
         require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
-        weth.withdraw(totalAmountOut);
-        (bool xfer,) = msg.sender.call.value(totalAmountOut)("");
+        uint wethBalance = weth.balanceOf(address(this));
+        weth.withdraw(wethBalance);
+        (bool xfer,) = msg.sender.call.value(wethBalance)("");
         require(xfer, "ERR_ETH_FAILED");
         return totalAmountIn;
     }
