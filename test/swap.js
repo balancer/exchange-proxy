@@ -143,7 +143,7 @@ contract('ExchangeProxy', async (accounts) => {
                 { from: nonAdmin },
             );
 
-            console.log(totalAmountOut.toString());
+            // console.log(totalAmountOut.toString());
 
             const expectedTotalOut = pool1Out.plus(pool3Out);
 
@@ -159,229 +159,307 @@ contract('ExchangeProxy', async (accounts) => {
             assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
         });
 
-        // it('batchSwapExactOut dry', async () => {
-        //     const swaps = [
-        //         [
-        //             POOL1,
-        //             toWei('1'),
-        //             toWei('100'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL2,
-        //             toWei('1'),
-        //             toWei('100'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL3,
-        //             toWei('5'),
-        //             toWei('500'),
-        //             MAX,
-        //         ],
-        //     ];
+        it('batchSwapExactOut dry', async () => {
+            const swapFee = fromWei(await pool1.getSwapFee());
 
-        //     const swapFee = fromWei(await pool1.getSwapFee());
-        //     const totalAmountIn = await proxy.batchSwapExactOut.call(
-        //         swaps, WETH, DAI, toWei('7'),
-        //         { from: nonAdmin },
-        //     );
+            const pool1In = calcInGivenOut(6, 5, 1200, 5, 100, swapFee); // WETH -> DAI
+            const pool3In = calcInGivenOut(5, 5, 1000, 5, 100, swapFee); // MKR -> DAI
+            const pool2In = calcInGivenOut(1, 10, 2, 20, pool3In, swapFee); // WETH -> MKR
 
-        //     const pool1In = calcInGivenOut(6, 5, 1200, 5, 100, swapFee);
-        //     const pool2In = calcInGivenOut(2, 10, 800, 20, 100, swapFee);
-        //     const pool3In = calcInGivenOut(15, 5, 2500, 5, 500, swapFee);
+            // 2 sequences: [[WETH -> DAI]] and [[WETH -> MKR], [MKR -> DAI]]
+            const swapSequences = [
+                [
+                    [
+                        POOL1,
+                        WETH,
+                        DAI,
+                        toWei('100'),          
+                        MAX,
+                        MAX,
+                    ],
+                ],
+                [
+                    [                        
+                        POOL2,
+                        WETH,
+                        MKR,
+                        // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below          
+                        toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
+                        MAX,
+                        MAX,
+                    ],
+                    [
+                        POOL3,
+                        MKR,
+                        DAI,
+                        toWei('100'),          
+                        MAX,
+                        MAX,
+                    ],
+                ],
+            ];
 
-        //     const expectedTotalIn = pool1In.plus(pool2In).plus(pool3In);
+            const totalAmountIn = await proxy.batchSwapExactOut.call(
+                swapSequences, WETH, DAI, toWei('3'),
+                { from: nonAdmin },
+            );
 
-        //     const relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
-        //     if (verbose) {
-        //         console.log('batchSwapExactOut');
-        //         console.log(`expected: ${expectedTotalIn})`);
-        //         console.log(`actual  : ${fromWei(totalAmountIn)})`);
-        //         console.log(`relDif  : ${relDif})`);
-        //     }
+            // console.log(totalAmountIn.toString());
 
-        //     assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
-        // });
+            const expectedTotalIn = pool1In.plus(pool2In);
 
-        // it('batchEthInSwapExactIn dry', async () => {
-        //     const swaps = [
-        //         [
-        //             POOL1,
-        //             toWei('0.5'),
-        //             toWei('0'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL2,
-        //             toWei('0.5'),
-        //             toWei('0'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL3,
-        //             toWei('1'),
-        //             toWei('0'),
-        //             MAX,
-        //         ],
-        //     ];
+            const relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
+            if (verbose) {
+                console.log('batchSwapExactOut');
+                console.log(`expected: ${expectedTotalIn})`);
+                console.log(`actual  : ${fromWei(totalAmountIn)})`);
+                console.log(`relDif  : ${relDif})`);
+            }
 
-        //     const swapFee = fromWei(await pool1.getSwapFee());
-        //     const totalAmountOut = await proxy.batchEthInSwapExactIn.call(
-        //         swaps, DAI, toWei('0'),
-        //         { from: nonAdmin, value: toWei('2') },
-        //     );
+            assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
+        });
 
-        //     const pool1Out = calcOutGivenIn(6, 5, 1200, 5, 0.5, swapFee);
-        //     const pool2Out = calcOutGivenIn(2, 10, 800, 20, 0.5, swapFee);
-        //     const pool3Out = calcOutGivenIn(15, 5, 2500, 5, 1, swapFee);
+        it('batchEthInSwapExactIn dry', async () => {
+            const swapFee = fromWei(await pool1.getSwapFee());
+            const pool1Out = calcOutGivenIn(6, 5, 1200, 5, 0.5, swapFee); // WETH -> DAI
+            const pool2Out = calcOutGivenIn(1, 10, 2, 20, 0.5, swapFee); // WETH -> MKR
+            const pool3Out = calcOutGivenIn(5, 5, 1000, 5, pool2Out, swapFee); // MKR -> DAI
 
-        //     const expectedTotalOut = pool1Out.plus(pool2Out).plus(pool3Out);
+            // 2 sequences: [[WETH -> DAI]] and [[WETH -> MKR], [MKR -> DAI]]
+            const swapSequences = [
+                [
+                    [
+                        POOL1,
+                        WETH,
+                        DAI,
+                        toWei('0.5'),
+                        toWei('0'),
+                        MAX,
+                    ],
+                ],
+                [
+                    [                        
+                        POOL2,
+                        WETH,
+                        MKR,
+                        toWei('0.5'),
+                        toWei('0'),
+                        MAX,
+                    ],
+                    [
+                        POOL3,
+                        MKR,
+                        DAI,
+                        //toWei(pool2Out.toString()), // This conversion to string is bugged, so using hardcoded line below
+                        toWei('0.36700656597895291'),
+                        toWei('0'),
+                        MAX,
+                    ],
+                ],
+            ];
 
-        //     const relDif = calcRelativeDiff(expectedTotalOut, Decimal(fromWei(totalAmountOut)));
-        //     if (verbose) {
-        //         console.log('batchEthInSwapExactIn');
-        //         console.log(`expected: ${expectedTotalOut})`);
-        //         console.log(`actual  : ${fromWei(totalAmountOut)})`);
-        //         console.log(`relDif  : ${relDif})`);
-        //     }
+            // console.log(swapSequences);
 
-        //     assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
-        // });
+            const totalAmountOut = await proxy.batchEthInSwapExactIn.call(
+                swapSequences, DAI, toWei('0'),
+                { from: nonAdmin, value: toWei('2') },
+            );
 
-        // it('batchEthOutSwapExactIn dry', async () => {
-        //     const swaps = [
-        //         [
-        //             POOL1,
-        //             toWei('30'),
-        //             toWei('0'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL2,
-        //             toWei('45'),
-        //             toWei('0'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL3,
-        //             toWei('75'),
-        //             toWei('0'),
-        //             MAX,
-        //         ],
-        //     ];
+            // console.log(totalAmountOut.toString());
 
-        //     const swapFee = fromWei(await pool1.getSwapFee());
-        //     const totalAmountOut = await proxy.batchEthOutSwapExactIn.call(
-        //         swaps, DAI, toWei('150'), toWei('0.5'),
-        //         { from: nonAdmin },
-        //     );
+            const expectedTotalOut = pool1Out.plus(pool3Out);
 
-        //     const pool1Out = calcOutGivenIn(1200, 5, 6, 5, 30, swapFee);
-        //     const pool2Out = calcOutGivenIn(800, 20, 2, 10, 45, swapFee);
-        //     const pool3Out = calcOutGivenIn(2500, 5, 15, 5, 75, swapFee);
+            const relDif = calcRelativeDiff(expectedTotalOut, Decimal(fromWei(totalAmountOut)));
 
-        //     const expectedTotalOut = pool1Out.plus(pool2Out).plus(pool3Out);
+            if (verbose) {
+                console.log('batchSwapExactIn');
+                console.log(`expected: ${expectedTotalOut})`);
+                console.log(`actual  : ${fromWei(totalAmountOut)})`);
+                console.log(`relDif  : ${relDif})`);
+            }
 
-        //     const relDif = calcRelativeDiff(expectedTotalOut, Decimal(fromWei(totalAmountOut)));
-        //     if (verbose) {
-        //         console.log('batchEthOutSwapExactIn');
-        //         console.log(`expected: ${expectedTotalOut})`);
-        //         console.log(`actual  : ${fromWei(totalAmountOut)})`);
-        //         console.log(`relDif  : ${relDif})`);
-        //     }
+            assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
+        });
 
-        //     assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
-        // });
+        it('batchEthOutSwapExactIn dry', async () => {
+            const swapFee = fromWei(await pool1.getSwapFee());
 
-        // it('batchEthInSwapExactOut dry', async () => {
-        //     const swaps = [
-        //         [
-        //             POOL1,
-        //             toWei('1'),
-        //             toWei('100'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL2,
-        //             toWei('1'),
-        //             toWei('100'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL3,
-        //             toWei('5'),
-        //             toWei('500'),
-        //             MAX,
-        //         ],
-        //     ];
+            const pool1Out = calcOutGivenIn(1200, 5, 6, 5, 50, swapFee); // DAI -> WETH
+            const pool3Out = calcOutGivenIn(1000, 5, 5, 5, 50, swapFee); // DAI -> MKR
+            const pool2Out = calcOutGivenIn(2, 20, 1, 10, pool3Out, swapFee); // MKR -> WETH
 
-        //     const swapFee = fromWei(await pool1.getSwapFee());
-        //     const totalAmountIn = await proxy.batchEthInSwapExactOut.call(
-        //         swaps, DAI,
-        //         { from: nonAdmin, value: toWei('7.5') },
-        //     );
+            const swapSequences = [
+                [
+                    [
+                        POOL1,
+                        DAI,
+                        WETH,
+                        toWei('50'),
+                        toWei('0'),
+                        MAX,
+                    ],
+                ],
+                [
+                    [                        
+                        POOL3,
+                        DAI,
+                        MKR,
+                        toWei('50'),
+                        toWei('0'),
+                        MAX,
+                    ],
+                    [
+                        POOL2,
+                        MKR,
+                        WETH,
+                        // toWei(pool2Out.toString()), // Error: [ethjs-unit] while converting number 0.23809501133785768275 to wei, too many decimal places
+                        toWei('0.2380950113379'),
+                        toWei('0'),
+                        MAX,
+                    ],
+                ],
+            ];
 
-        //     const pool1In = calcInGivenOut(6, 5, 1200, 5, 100, swapFee);
-        //     const pool2In = calcInGivenOut(2, 10, 800, 20, 100, swapFee);
-        //     const pool3In = calcInGivenOut(15, 5, 2500, 5, 500, swapFee);
+            // console.log(swapSequences);
 
-        //     const expectedTotalIn = pool1In.plus(pool2In).plus(pool3In);
+            const totalAmountOut = await proxy.batchEthOutSwapExactIn.call(
+                swapSequences, DAI, toWei('100'), toWei('0.1'),
+                { from: nonAdmin },
+            );
 
-        //     const relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
-        //     if (verbose) {
-        //         console.log('batchEthInSwapExactOut');
-        //         console.log(`expected: ${expectedTotalIn})`);
-        //         console.log(`actual  : ${fromWei(totalAmountIn)})`);
-        //         console.log(`relDif  : ${relDif})`);
-        //     }
+            // console.log(totalAmountOut.toString());
 
-        //     assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
-        // });
+            const expectedTotalOut = pool1Out.plus(pool2Out);
 
-        // it('batchEthOutSwapExactOut dry', async () => {
-        //     const swaps = [
-        //         [
-        //             POOL1,
-        //             toWei('150'),
-        //             toWei('0.5'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL2,
-        //             toWei('150'),
-        //             toWei('0.5'),
-        //             MAX,
-        //         ],
-        //         [
-        //             POOL3,
-        //             toWei('550'),
-        //             toWei('2.5'),
-        //             MAX,
-        //         ],
-        //     ];
+            const relDif = calcRelativeDiff(expectedTotalOut, Decimal(fromWei(totalAmountOut)));
 
-        //     const swapFee = fromWei(await pool1.getSwapFee());
-        //     const totalAmountIn = await proxy.batchEthOutSwapExactOut.call(
-        //         swaps, DAI, toWei('750'),
-        //         { from: nonAdmin },
-        //     );
+            if (verbose) {
+                console.log('batchSwapExactIn');
+                console.log(`expected: ${expectedTotalOut})`);
+                console.log(`actual  : ${fromWei(totalAmountOut)})`);
+                console.log(`relDif  : ${relDif})`);
+            }
 
-        //     const pool1In = calcInGivenOut(1200, 5, 6, 5, 0.5, swapFee);
-        //     const pool2In = calcInGivenOut(800, 20, 2, 10, 0.5, swapFee);
-        //     const pool3In = calcInGivenOut(2500, 5, 15, 5, 2.5, swapFee);
+            assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
+        });
 
-        //     const expectedTotalIn = pool1In.plus(pool2In).plus(pool3In);
+        it('batchEthInSwapExactOut dry', async () => {
+            const swapFee = fromWei(await pool1.getSwapFee());
 
-        //     const relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
-        //     if (verbose) {
-        //         console.log('batchEthOutSwapExactOut');
-        //         console.log(`expected: ${expectedTotalIn})`);
-        //         console.log(`actual  : ${fromWei(totalAmountIn)})`);
-        //         console.log(`relDif  : ${relDif})`);
-        //     }
+            const pool1In = calcInGivenOut(6, 5, 1200, 5, 100, swapFee); // WETH -> DAI
+            const pool3In = calcInGivenOut(5, 5, 1000, 5, 100, swapFee); // MKR -> DAI
+            const pool2In = calcInGivenOut(1, 10, 2, 20, pool3In, swapFee); // WETH -> MKR
 
-        //     assert.isAtMost(relDif.toNumber(), (errorDelta * swaps.length));
-        // });
+            // 2 sequences: [[WETH -> DAI]] and [[WETH -> MKR], [MKR -> DAI]]
+            const swapSequences = [
+                [
+                    [
+                        POOL1,
+                        WETH,
+                        DAI,
+                        toWei('100'),          
+                        MAX,
+                        MAX,
+                    ],
+                ],
+                [
+                    [                        
+                        POOL2,
+                        WETH,
+                        MKR,
+                        // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below          
+                        toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
+                        MAX,
+                        MAX,
+                    ],
+                    [
+                        POOL3,
+                        MKR,
+                        DAI,
+                        toWei('100'),          
+                        MAX,
+                        MAX,
+                    ],
+                ],
+            ];
+
+            const totalAmountIn = await proxy.batchEthInSwapExactOut.call(
+                swapSequences, DAI, 
+                { from: nonAdmin, value: toWei('3') },
+            );
+
+            // console.log(totalAmountIn.toString());
+
+            const expectedTotalIn = pool1In.plus(pool2In);
+
+            const relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
+            if (verbose) {
+                console.log('batchSwapExactOut');
+                console.log(`expected: ${expectedTotalIn})`);
+                console.log(`actual  : ${fromWei(totalAmountIn)})`);
+                console.log(`relDif  : ${relDif})`);
+            }
+
+            assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
+
+        });
+
+        it('batchEthOutSwapExactOut dry', async () => {
+            const swapFee = fromWei(await pool1.getSwapFee());
+
+            const pool1In = calcInGivenOut(1200, 5, 6, 5, 0.1, swapFee); // DAI -> WETH
+            const pool2In = calcInGivenOut(2, 20, 1, 10, 0.1, swapFee); // MKR -> WETH
+            const pool3In = calcInGivenOut(1000, 5, 5, 5, pool2In, swapFee); // DAI -> MKR
+
+            const swapSequences = [
+                [
+                    [
+                        POOL1,
+                        DAI,
+                        WETH,
+                        toWei('0.1'),
+                        MAX,
+                        MAX,
+                    ],
+                ],
+                [
+                    [                        
+                        POOL3,
+                        DAI,
+                        MKR,
+                        // toWei(pool2In.toString()), // Error: [ethjs-unit] while converting number 0.10818521496413451873 to wei, too many decimal places
+                        toWei('0.108185215'),
+                        MAX,
+                        MAX,
+                    ],
+                    [
+                        POOL2,
+                        MKR,
+                        WETH,
+                        toWei('0.1'),
+                        MAX,
+                        MAX,
+                    ],
+                ],
+            ];
+
+
+            const totalAmountIn = await proxy.batchEthOutSwapExactOut.call(
+                swapSequences, DAI, toWei('50'),
+                { from: nonAdmin },
+            );
+
+            const expectedTotalIn = pool1In.plus(pool3In);
+
+            const relDif = calcRelativeDiff(expectedTotalIn, Decimal(fromWei(totalAmountIn)));
+            if (verbose) {
+                console.log('batchSwapExactOut');
+                console.log(`expected: ${expectedTotalIn})`);
+                console.log(`actual  : ${fromWei(totalAmountIn)})`);
+                console.log(`relDif  : ${relDif})`);
+            }
+
+            assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
+        });
     });
 });
