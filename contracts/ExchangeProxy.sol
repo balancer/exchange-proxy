@@ -32,6 +32,13 @@ contract TokenInterface {
 
 contract ExchangeProxy {
 
+    struct LegacySwap {
+        address pool;
+        uint    tokenInParam; // tokenInAmount / maxAmountIn / limitAmountIn
+        uint    tokenOutParam; // minAmountOut / tokenAmountOut / limitAmountOut
+        uint    maxPrice;
+    }
+
     struct Swap {
         address pool;
         address tokenIn;
@@ -74,7 +81,7 @@ contract ExchangeProxy {
         return c;
     }
 
-    function batchSwapExactIn(
+    function multihopBatchSwapExactIn(
         Swap[][] memory swapSequences,
         address tokenIn,
         address tokenOut,
@@ -90,7 +97,7 @@ contract ExchangeProxy {
         TokenInterface TO = TokenInterface(tokenOut);
         require(TI.transferFrom(msg.sender, address(this), totalAmountIn), "ERR_TRANSFER_FAILED");
 
-        totalAmountOut = batchSwapExactInCore(
+        totalAmountOut = multihopBatchSwapExactInCore(
             swapSequences
         );  
 
@@ -107,7 +114,7 @@ contract ExchangeProxy {
         return totalAmountOut;
     }
 
-    function batchSwapExactInCore(
+    function multihopBatchSwapExactInCore(
         Swap[][] memory swapSequences
     )   
         internal
@@ -142,7 +149,7 @@ contract ExchangeProxy {
         return totalAmountOut;
     }
 
-    function batchSwapExactOut(
+    function multihopBatchSwapExactOut(
         Swap[][] memory swapSequences,
         address tokenIn,
         address tokenOut,
@@ -156,7 +163,7 @@ contract ExchangeProxy {
         TokenInterface TI = TokenInterface(tokenIn);
         TokenInterface TO = TokenInterface(tokenOut);
         require(TI.transferFrom(msg.sender, address(this), maxTotalAmountIn), "ERR_TRANSFER_FAILED");
-        totalAmountIn = batchSwapExactOutCore(
+        totalAmountIn = multihopBatchSwapExactOutCore(
             swapSequences
         );
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
@@ -172,7 +179,7 @@ contract ExchangeProxy {
         return totalAmountIn;
     }
 
-    function batchSwapExactOutCore(
+    function multihopBatchSwapExactOutCore(
         Swap[][] memory swapSequences
     )
         internal
@@ -186,7 +193,7 @@ contract ExchangeProxy {
                 TokenInterface SwapTokenIn = TokenInterface(swap.tokenIn);
 
                 PoolInterface pool = PoolInterface(swap.pool);
-                if (SwapTokenIn.allowance(address(this), swap.pool) < uint(-1)) { // We don't know in advace how much tokenIn will be needed
+                if (SwapTokenIn.allowance(address(this), swap.pool) < uint(-1)) { // We don't know in advance how much tokenIn will be needed
                     SwapTokenIn.approve(swap.pool, uint(-1));
                 }
 
@@ -218,7 +225,7 @@ contract ExchangeProxy {
         return totalAmountIn;
     }
 
-    function batchEthInSwapExactIn(
+    function multihopBatchEthInSwapExactIn(
         Swap[][] memory swapSequences,
         address tokenOut,
         uint minTotalAmountOut
@@ -231,7 +238,7 @@ contract ExchangeProxy {
         TokenInterface TO = TokenInterface(tokenOut);
         weth.deposit.value(msg.value)();
 
-        totalAmountOut = batchSwapExactInCore(
+        totalAmountOut = multihopBatchSwapExactInCore(
             swapSequences
         );
         require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
@@ -251,7 +258,7 @@ contract ExchangeProxy {
 
     }
 
-    function batchEthOutSwapExactIn(
+    function multihopBatchEthOutSwapExactIn(
         Swap[][] memory swapSequences,
         address tokenIn,
         uint totalAmountIn,
@@ -266,7 +273,7 @@ contract ExchangeProxy {
         require(TI.transferFrom(msg.sender, address(this), totalAmountIn), "ERR_TRANSFER_FAILED");
         
         // TODO: should we pass TI and TO to avoid loading costs in batchSwapExactInCore again?
-        totalAmountOut = batchSwapExactInCore(
+        totalAmountOut = multihopBatchSwapExactInCore(
             swapSequences
         );
 
@@ -283,7 +290,7 @@ contract ExchangeProxy {
         return totalAmountOut;
     }
 
-    function batchEthInSwapExactOut(
+    function multihopBatchEthInSwapExactOut(
         Swap[][] memory swapSequences,
         address tokenOut
     )
@@ -295,7 +302,7 @@ contract ExchangeProxy {
         TokenInterface TO = TokenInterface(tokenOut);
         weth.deposit.value(msg.value)();
 
-        totalAmountIn = batchSwapExactOutCore(
+        totalAmountIn = multihopBatchSwapExactOutCore(
             swapSequences
         );
 
@@ -310,7 +317,7 @@ contract ExchangeProxy {
         return totalAmountIn;
     }
 
-    function batchEthOutSwapExactOut(
+    function multihopBatchEthOutSwapExactOut(
         Swap[][] memory swapSequences,
         address tokenIn,
         uint maxTotalAmountIn
@@ -322,7 +329,7 @@ contract ExchangeProxy {
     {
         TokenInterface TI = TokenInterface(tokenIn);
         require(TI.transferFrom(msg.sender, address(this), maxTotalAmountIn), "ERR_TRANSFER_FAILED");
-        totalAmountIn = batchSwapExactOutCore(
+        totalAmountIn = multihopBatchSwapExactOutCore(
             swapSequences
         );
         require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
@@ -331,6 +338,230 @@ contract ExchangeProxy {
         if(TIBalance>0)
             require(TI.transfer(msg.sender, TIBalance), "ERR_TRANSFER_FAILED");
             
+        uint wethBalance = weth.balanceOf(address(this));
+        weth.withdraw(wethBalance);
+        (bool xfer,) = msg.sender.call.value(wethBalance)("");
+        require(xfer, "ERR_ETH_FAILED");
+        return totalAmountIn;
+    }
+
+    // Functions of previous exchange-proxy for backward compatibility
+
+    function batchSwapExactIn(
+        LegacySwap[] memory swaps,
+        address tokenIn,
+        address tokenOut,
+        uint totalAmountIn,
+        uint minTotalAmountOut
+    )   
+        public
+        _logs_
+        _lock_
+        returns (uint totalAmountOut)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        TokenInterface TO = TokenInterface(tokenOut);
+        require(TI.transferFrom(msg.sender, address(this), totalAmountIn), "ERR_TRANSFER_FAILED");
+        for (uint i = 0; i < swaps.length; i++) {
+            LegacySwap memory swap = swaps[i];
+            
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+            totalAmountOut = add(tokenAmountOut, totalAmountOut);
+        }
+        require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
+        return totalAmountOut;
+    }
+
+    function batchSwapExactOut(
+        LegacySwap[] memory swaps,
+        address tokenIn,
+        address tokenOut,
+        uint maxTotalAmountIn
+    )
+        public
+        _logs_
+        _lock_
+        returns (uint totalAmountIn)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        TokenInterface TO = TokenInterface(tokenOut);
+        require(TI.transferFrom(msg.sender, address(this), maxTotalAmountIn), "ERR_TRANSFER_FAILED");
+        for (uint i = 0; i < swaps.length; i++) {
+            LegacySwap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+            totalAmountIn = add(tokenAmountIn, totalAmountIn);
+        }
+        require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
+        return totalAmountIn;
+    }
+
+    function batchEthInSwapExactIn(
+        LegacySwap[] memory swaps,
+        address tokenOut,
+        uint minTotalAmountOut
+    )
+        public payable
+        _logs_
+        _lock_
+        returns (uint totalAmountOut)
+    {
+        TokenInterface TO = TokenInterface(tokenOut);
+        weth.deposit.value(msg.value)();
+        for (uint i = 0; i < swaps.length; i++) {
+            LegacySwap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (weth.allowance(address(this), swap.pool) < msg.value) {
+                weth.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(
+                                        address(weth),
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+            totalAmountOut = add(tokenAmountOut, totalAmountOut);
+        }
+        require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
+        uint wethBalance = weth.balanceOf(address(this));
+        if (wethBalance > 0) {
+            weth.withdraw(wethBalance);
+            (bool xfer,) = msg.sender.call.value(wethBalance)("");
+            require(xfer, "ERR_ETH_FAILED");
+        }
+        return totalAmountOut;
+    }
+
+    function batchEthOutSwapExactIn(
+        LegacySwap[] memory swaps,
+        address tokenIn,
+        uint totalAmountIn,
+        uint minTotalAmountOut
+    )
+        public
+        _logs_
+        _lock_
+        returns (uint totalAmountOut)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        require(TI.transferFrom(msg.sender, address(this), totalAmountIn), "ERR_TRANSFER_FAILED");
+        for (uint i = 0; i < swaps.length; i++) {
+            LegacySwap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < totalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountOut,) = pool.swapExactAmountIn(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        address(weth),
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+
+            totalAmountOut = add(tokenAmountOut, totalAmountOut);
+        }
+        require(totalAmountOut >= minTotalAmountOut, "ERR_LIMIT_OUT");
+        uint wethBalance = weth.balanceOf(address(this));
+        weth.withdraw(wethBalance);
+        (bool xfer,) = msg.sender.call.value(wethBalance)("");
+        require(xfer, "ERR_ETH_FAILED");
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
+        return totalAmountOut;
+    }
+
+    function batchEthInSwapExactOut(
+        LegacySwap[] memory swaps,
+        address tokenOut
+    )
+        public payable
+        _logs_
+        _lock_
+        returns (uint totalAmountIn)
+    {
+        TokenInterface TO = TokenInterface(tokenOut);
+        weth.deposit.value(msg.value)();
+        for (uint i = 0; i < swaps.length; i++) {
+            LegacySwap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (weth.allowance(address(this), swap.pool) < msg.value) {
+                weth.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(
+                                        address(weth),
+                                        swap.tokenInParam,
+                                        tokenOut,
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+
+            totalAmountIn = add(tokenAmountIn, totalAmountIn);
+        }
+        require(TO.transfer(msg.sender, TO.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
+        uint wethBalance = weth.balanceOf(address(this));
+        if (wethBalance > 0) {
+            weth.withdraw(wethBalance);
+            (bool xfer,) = msg.sender.call.value(wethBalance)("");
+            require(xfer, "ERR_ETH_FAILED");
+        }
+        return totalAmountIn;
+    }
+
+    function batchEthOutSwapExactOut(
+        LegacySwap[] memory swaps,
+        address tokenIn,
+        uint maxTotalAmountIn
+    )
+        public
+        _logs_
+        _lock_
+        returns (uint totalAmountIn)
+    {
+        TokenInterface TI = TokenInterface(tokenIn);
+        require(TI.transferFrom(msg.sender, address(this), maxTotalAmountIn), "ERR_TRANSFER_FAILED");
+        for (uint i = 0; i < swaps.length; i++) {
+            LegacySwap memory swap = swaps[i];
+            PoolInterface pool = PoolInterface(swap.pool);
+            if (TI.allowance(address(this), swap.pool) < maxTotalAmountIn) {
+                TI.approve(swap.pool, uint(-1));
+            }
+            (uint tokenAmountIn,) = pool.swapExactAmountOut(
+                                        tokenIn,
+                                        swap.tokenInParam,
+                                        address(weth),
+                                        swap.tokenOutParam,
+                                        swap.maxPrice
+                                    );
+
+            totalAmountIn = add(tokenAmountIn, totalAmountIn);
+        }
+        require(totalAmountIn <= maxTotalAmountIn, "ERR_LIMIT_IN");
+        require(TI.transfer(msg.sender, TI.balanceOf(address(this))), "ERR_TRANSFER_FAILED");
         uint wethBalance = weth.balanceOf(address(this));
         weth.withdraw(wethBalance);
         (bool xfer,) = msg.sender.call.value(wethBalance)("");
