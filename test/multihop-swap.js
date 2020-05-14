@@ -96,7 +96,7 @@ contract('ExchangeProxy', async (accounts) => {
             await pool3.finalize(toWei('100'));
         });
 
-        it('batchSwapExactIn dry', async () => {
+        it('multihopBatchSwapExactIn dry', async () => {
 
             const swapFee = fromWei(await pool1.getSwapFee());
             const pool1Out = calcOutGivenIn(6, 5, 1200, 5, 0.5, swapFee); // WETH -> DAI
@@ -129,7 +129,8 @@ contract('ExchangeProxy', async (accounts) => {
                         MKR,
                         DAI,
                         //toWei(pool2Out.toString()), // This conversion to string is bugged, so using hardcoded line below
-                        toWei('0.36700656597895291'),
+                        //toWei('0.36700656597895291'),
+                        toWei('0'), // This number should not influence the result
                         toWei('0'),
                         MAX,
                     ],
@@ -159,7 +160,7 @@ contract('ExchangeProxy', async (accounts) => {
             assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
         });
 
-        it('batchSwapExactOut dry', async () => {
+        it('multihopBatchSwapExactOut dry', async () => {
             const swapFee = fromWei(await pool1.getSwapFee());
 
             const pool1In = calcInGivenOut(6, 5, 1200, 5, 100, swapFee); // WETH -> DAI
@@ -184,7 +185,8 @@ contract('ExchangeProxy', async (accounts) => {
                         WETH,
                         MKR,
                         // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below          
-                        toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
+                        //toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
+                        toWei('0'), // This number should not influence the result
                         MAX,
                         MAX,
                     ],
@@ -219,7 +221,7 @@ contract('ExchangeProxy', async (accounts) => {
             assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
         });
 
-        it('batchEthInSwapExactIn dry', async () => {
+        it('multihopBatchEthInSwapExactIn dry', async () => {
             const swapFee = fromWei(await pool1.getSwapFee());
             const pool1Out = calcOutGivenIn(6, 5, 1200, 5, 0.5, swapFee); // WETH -> DAI
             const pool2Out = calcOutGivenIn(1, 10, 2, 20, 0.5, swapFee); // WETH -> MKR
@@ -251,7 +253,8 @@ contract('ExchangeProxy', async (accounts) => {
                         MKR,
                         DAI,
                         //toWei(pool2Out.toString()), // This conversion to string is bugged, so using hardcoded line below
-                        toWei('0.36700656597895291'),
+                        // toWei('0.36700656597895291'),
+                        toWei('0'), // This number should not influence the result
                         toWei('0'),
                         MAX,
                     ],
@@ -281,7 +284,7 @@ contract('ExchangeProxy', async (accounts) => {
             assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
         });
 
-        it('batchEthOutSwapExactIn dry', async () => {
+        it('multihopBatchEthOutSwapExactIn dry', async () => {
             const swapFee = fromWei(await pool1.getSwapFee());
 
             const pool1Out = calcOutGivenIn(1200, 5, 6, 5, 50, swapFee); // DAI -> WETH
@@ -313,7 +316,8 @@ contract('ExchangeProxy', async (accounts) => {
                         MKR,
                         WETH,
                         // toWei(pool2Out.toString()), // Error: [ethjs-unit] while converting number 0.23809501133785768275 to wei, too many decimal places
-                        toWei('0.2380950113379'),
+                        // toWei('0.2380950113379'),
+                        toWei('0'), // This number should not influence the result
                         toWei('0'),
                         MAX,
                     ],
@@ -343,7 +347,7 @@ contract('ExchangeProxy', async (accounts) => {
             assert.isAtMost(relDif.toNumber(), (errorDelta * swapSequences.length));
         });
 
-        it('batchEthInSwapExactOut dry', async () => {
+        it('multihopBatchEthInSwapExactOut dry', async () => {
             const swapFee = fromWei(await pool1.getSwapFee());
 
             const pool1In = calcInGivenOut(6, 5, 1200, 5, 100, swapFee); // WETH -> DAI
@@ -368,7 +372,8 @@ contract('ExchangeProxy', async (accounts) => {
                         WETH,
                         MKR,
                         // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below          
-                        toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
+                        // toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
+                        toWei('0'), // This number should not influence the result
                         MAX,
                         MAX,
                     ],
@@ -404,7 +409,7 @@ contract('ExchangeProxy', async (accounts) => {
 
         });
 
-        it('batchEthOutSwapExactOut dry', async () => {
+        it('multihopBatchEthOutSwapExactOut dry', async () => {
             const swapFee = fromWei(await pool1.getSwapFee());
 
             const pool1In = calcInGivenOut(1200, 5, 6, 5, 0.1, swapFee); // DAI -> WETH
@@ -428,7 +433,8 @@ contract('ExchangeProxy', async (accounts) => {
                         DAI,
                         MKR,
                         // toWei(pool2In.toString()), // Error: [ethjs-unit] while converting number 0.10818521496413451873 to wei, too many decimal places
-                        toWei('0.108185215'),
+                        // toWei('0.108185215'),
+                        toWei('0'), // This number should not influence the result
                         MAX,
                         MAX,
                     ],

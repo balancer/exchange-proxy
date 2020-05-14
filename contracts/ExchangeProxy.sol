@@ -18,6 +18,10 @@ pragma experimental ABIEncoderV2;
 contract PoolInterface {
     function swapExactAmountIn(address, uint, address, uint, uint) external returns (uint, uint);
     function swapExactAmountOut(address, uint, address, uint, uint) external returns (uint, uint);
+    function calcInGivenOut(uint, uint, uint, uint, uint, uint) public pure returns (uint);
+    function getDenormalizedWeight(address) external view returns (uint);
+    function getBalance(address) external view returns (uint);
+    function getSwapFee() external view returns (uint);
 }
 
 contract TokenInterface {
@@ -98,6 +102,7 @@ contract ExchangeProxy {
         if(TOBalance>0)
             require(TO.transfer(msg.sender, TOBalance), "ERR_TRANSFER_FAILED");
 
+
         uint TIBalance = TI.balanceOf(address(this));
         if(TIBalance>0)
             require(TI.transfer(msg.sender, TIBalance), "ERR_TRANSFER_FAILED");
@@ -116,8 +121,8 @@ contract ExchangeProxy {
             for (uint k = 0; k < swapSequences[i].length; k++) {
                 Swap memory swap = swapSequences[i][k];
                 TokenInterface SwapTokenIn = TokenInterface(swap.tokenIn);
-                if(k>0)
-                    // Makes sure that from the second swap on, all the previous output was used 
+                if(k==1)
+                    // Makes sure that on the second swap the output of the first was used 
                     // so there is not intermediate token leftover
                     swap.swapAmount = tokenAmountOut;
                 
@@ -177,9 +182,9 @@ contract ExchangeProxy {
     {
         for (uint i = 0; i < swapSequences.length; i++) {
             uint tokenAmountInFirstSwap;
-            uint tokenAmountOutFirstSwap;
-            for (uint k = 0; k < swapSequences[i].length; k++) {
-                Swap memory swap = swapSequences[i][k];
+            // Specific code for a simple swap and a multihop (2 swaps in sequence)
+            if(swapSequences[i].length == 1){
+                Swap memory swap = swapSequences[i][0];
                 TokenInterface SwapTokenIn = TokenInterface(swap.tokenIn);
 
                 PoolInterface pool = PoolInterface(swap.pool);
@@ -187,29 +192,61 @@ contract ExchangeProxy {
                     SwapTokenIn.approve(swap.pool, uint(-1));
                 }
 
-                (uint tokenAmountIn,) = pool.swapExactAmountOut(
+                (tokenAmountInFirstSwap,) = pool.swapExactAmountOut(
                                         swap.tokenIn,
                                         swap.limitReturnAmount,
                                         swap.tokenOut,
                                         swap.swapAmount,
                                         swap.maxPrice
                                     );
-
-                // Store necessary info from first swap
-                if(k==0){
-                    tokenAmountInFirstSwap = tokenAmountIn; 
-                    tokenAmountOutFirstSwap = swap.swapAmount;                 
-                } 
-
-                // If this is the second swap, check that tokenAmountIn == tokenAmountOutFirstSwap, if not
-                // then tokenAmountIn must be lower than tokenAmountOutFirstSwap otherwise the second swap
-                // would have reverted. Then we have to send the difference back to the user
-                if(k==1){
-                    if(tokenAmountOutFirstSwap>tokenAmountIn)
-                        require(SwapTokenIn.transfer(msg.sender, tokenAmountOutFirstSwap-tokenAmountIn), "ERR_TRANSFER_FAILED");
-                }
             }
-            // This takes the amountIn of the first swap 
+            // Multihop (we assume swapSequences can only have 1 or 2 swaps)
+            else{
+                // Consider we are swapping A -> B and B -> C. The goal is to buy a given amount
+                // of token C. But first we need to buy B with A so we can then buy C with B
+                // To get the exact amount of C we then first need to calculate how much B we'll need:
+                uint intermediateTokenAmount; // This would be token B as described above
+                Swap memory secondSwap = swapSequences[i][1];
+                PoolInterface poolSecondSwap = PoolInterface(secondSwap.pool);
+                intermediateTokenAmount = poolSecondSwap.calcInGivenOut(
+                                        poolSecondSwap.getBalance(secondSwap.tokenIn),
+                                        poolSecondSwap.getDenormalizedWeight(secondSwap.tokenIn),
+                                        poolSecondSwap.getBalance(secondSwap.tokenOut),
+                                        poolSecondSwap.getDenormalizedWeight(secondSwap.tokenOut),
+                                        secondSwap.swapAmount,
+                                        poolSecondSwap.getSwapFee()
+                                    );
+
+                //// Buy intermediateTokenAmount of token B with A in the first pool                
+                Swap memory firstSwap = swapSequences[i][0];
+                TokenInterface FirstSwapTokenIn = TokenInterface(firstSwap.tokenIn);
+                PoolInterface poolFirstSwap = PoolInterface(firstSwap.pool);
+                if (FirstSwapTokenIn.allowance(address(this), firstSwap.pool) < uint(-1)) { // We don't know in advance how much tokenIn will be needed
+                    FirstSwapTokenIn.approve(firstSwap.pool, uint(-1));
+                }
+
+                (tokenAmountInFirstSwap,) = poolFirstSwap.swapExactAmountOut(
+                                        firstSwap.tokenIn,
+                                        firstSwap.limitReturnAmount,
+                                        firstSwap.tokenOut,
+                                        intermediateTokenAmount, // This is the amount of token B we need
+                                        firstSwap.maxPrice
+                                    );
+
+                //// Buy the final amount of token C desired
+                TokenInterface SecondSwapTokenIn = TokenInterface(secondSwap.tokenIn);
+                if (SecondSwapTokenIn.allowance(address(this), secondSwap.pool) < uint(-1)) { // We don't know in advance how much tokenIn will be needed
+                    SecondSwapTokenIn.approve(secondSwap.pool, uint(-1));
+                }
+
+                poolSecondSwap.swapExactAmountOut(
+                                        secondSwap.tokenIn,
+                                        secondSwap.limitReturnAmount,
+                                        secondSwap.tokenOut,
+                                        secondSwap.swapAmount, 
+                                        secondSwap.maxPrice
+                                    );
+            }
             totalAmountIn = add(tokenAmountInFirstSwap, totalAmountIn);
         }
         return totalAmountIn;
