@@ -27,10 +27,12 @@ contract('ExchangeProxy', async (accounts) => {
         let POOL1; let POOL2; let POOL3;
         let weth; let dai; let mkr;
         let WETH; let DAI; let MKR;
+        let ETH;
 
         before(async () => {
             weth = await Weth9.deployed();
             WETH = weth.address;
+            ETH = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
             proxy = await ExchangeProxy.deployed();
             PROXY = proxy.address;
@@ -263,12 +265,12 @@ contract('ExchangeProxy', async (accounts) => {
 
             // console.log(swapSequences);
 
-            const totalAmountOut = await proxy.multihopBatchEthInSwapExactIn.call(
-                swapSequences, DAI, toWei('0'),
+            const totalAmountOut = await proxy.multihopBatchSwapExactIn.call(
+                swapSequences, ETH, DAI, toWei('2'), toWei('0'),
                 { from: nonAdmin, value: toWei('2') },
             );
 
-            // console.log(totalAmountOut.toString());
+            console.log(totalAmountOut.toString());
 
             const expectedTotalOut = pool1Out.plus(pool3Out);
 
@@ -326,8 +328,8 @@ contract('ExchangeProxy', async (accounts) => {
 
             // console.log(swapSequences);
 
-            const totalAmountOut = await proxy.multihopBatchEthOutSwapExactIn.call(
-                swapSequences, DAI, toWei('100'), toWei('0.1'),
+            const totalAmountOut = await proxy.multihopBatchSwapExactIn.call(
+                swapSequences, DAI, ETH, toWei('100'), toWei('0.1'),
                 { from: nonAdmin },
             );
 
@@ -388,8 +390,8 @@ contract('ExchangeProxy', async (accounts) => {
                 ],
             ];
 
-            const totalAmountIn = await proxy.multihopBatchEthInSwapExactOut.call(
-                swapSequences, DAI, 
+            const totalAmountIn = await proxy.multihopBatchSwapExactOut.call(
+                swapSequences, ETH, DAI, toWei('3'),
                 { from: nonAdmin, value: toWei('3') },
             );
 
@@ -450,8 +452,13 @@ contract('ExchangeProxy', async (accounts) => {
             ];
 
 
-            const totalAmountIn = await proxy.multihopBatchEthOutSwapExactOut.call(
-                swapSequences, DAI, toWei('50'),
+            // const totalAmountIn = await proxy.multihopBatchSwapExactOut.call(
+            //     swapSequences, DAI, ETH, toWei('50'),
+            //     { from: nonAdmin },
+            // );
+
+            await proxy.multihopBatchSwapExactOut(
+                swapSequences, DAI, ETH, toWei('50'),
                 { from: nonAdmin },
             );
 
