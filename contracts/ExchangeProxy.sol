@@ -163,7 +163,7 @@ contract ExchangeProxy {
                 if (SwapTokenIn.allowance(address(this), swap.pool) > 0) {
                     SwapTokenIn.approve(swap.pool, 0);
                 }
-                SwapTokenIn.approve(swap.pool, swap.swapAmount);
+                SwapTokenIn.approve(swap.pool, swap.limitReturnAmount);
 
                 (tokenAmountInFirstSwap,) = pool.swapExactAmountOut(
                                         swap.tokenIn,

@@ -118,7 +118,7 @@ contract('ExchangeProxy', async (accounts) => {
                     ],
                 ],
                 [
-                    [                        
+                    [
                         POOL2,
                         WETH,
                         MKR,
@@ -176,17 +176,17 @@ contract('ExchangeProxy', async (accounts) => {
                         POOL1,
                         WETH,
                         DAI,
-                        toWei('100'),          
+                        toWei('100'),
                         MAX,
                         MAX,
                     ],
                 ],
                 [
-                    [                        
+                    [
                         POOL2,
                         WETH,
                         MKR,
-                        // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below          
+                        // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below
                         //toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
                         toWei('0'), // This number should not influence the result
                         MAX,
@@ -196,7 +196,7 @@ contract('ExchangeProxy', async (accounts) => {
                         POOL3,
                         MKR,
                         DAI,
-                        toWei('100'),          
+                        toWei('100'),
                         MAX,
                         MAX,
                     ],
@@ -242,7 +242,7 @@ contract('ExchangeProxy', async (accounts) => {
                     ],
                 ],
                 [
-                    [                        
+                    [
                         POOL2,
                         WETH,
                         MKR,
@@ -305,7 +305,7 @@ contract('ExchangeProxy', async (accounts) => {
                     ],
                 ],
                 [
-                    [                        
+                    [
                         POOL3,
                         DAI,
                         MKR,
@@ -363,17 +363,17 @@ contract('ExchangeProxy', async (accounts) => {
                         POOL1,
                         WETH,
                         DAI,
-                        toWei('100'),          
+                        toWei('100'),
                         MAX,
                         MAX,
                     ],
                 ],
                 [
-                    [                        
+                    [
                         POOL2,
                         WETH,
                         MKR,
-                        // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below          
+                        // toWei(pool3In.toString()), // This conversion to string is bugged, so using hardcoded line below
                         // toWei('0.55555611111166667'), // Rounded up in last decimal, from 0.55555611111166666717
                         toWei('0'), // This number should not influence the result
                         MAX,
@@ -383,7 +383,7 @@ contract('ExchangeProxy', async (accounts) => {
                         POOL3,
                         MKR,
                         DAI,
-                        toWei('100'),          
+                        toWei('100'),
                         MAX,
                         MAX,
                     ],
@@ -430,7 +430,7 @@ contract('ExchangeProxy', async (accounts) => {
                     ],
                 ],
                 [
-                    [                        
+                    [
                         POOL3,
                         DAI,
                         MKR,
@@ -452,10 +452,10 @@ contract('ExchangeProxy', async (accounts) => {
             ];
 
 
-            // const totalAmountIn = await proxy.multihopBatchSwapExactOut.call(
-            //     swapSequences, DAI, ETH, toWei('50'),
-            //     { from: nonAdmin },
-            // );
+            const totalAmountIn = await proxy.multihopBatchSwapExactOut.call(
+                swapSequences, DAI, ETH, toWei('50'),
+                { from: nonAdmin },
+            );
 
             await proxy.multihopBatchSwapExactOut(
                 swapSequences, DAI, ETH, toWei('50'),
