@@ -12,12 +12,14 @@
 
 <h1 align=center><code>exchange proxy</code></h1>
 
+!!!! This is the legacy, direct hop legacy. For Exchange Proxy V2 with multihop support please see: https://github.com/balancer-labs/balancer-registry
+
 Forwarding proxy that allows users to batch execute swaps recommended by the SOR.
 
 
 ### Development
 
-This project follows the standard Truffle project structure. 
+This project follows the standard Truffle project structure.
 
 ```
 yarn compile   # build artifacts to `build/contracts`
